@@ -5,8 +5,8 @@ import biorbd
 import pickle
 from utils import *
 
-T = 0.5
-N = 150
+T = 8
+N = 800
 # Ps = T/N
 # Fs = 1/Ps
 # biorbd_model = biorbd.Model("arm_wt_rot_scap.bioMod")
