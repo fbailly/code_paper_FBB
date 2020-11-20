@@ -1,0 +1,16 @@
+#!/bin/bash
+# script to run track Mhe for a list of N_mhe
+
+for i in {2..5}
+do
+python track_exc_RT.py $i
+done
+python track_excitations.py
+
+for i in {2..5}
+do
+python track_exc_RT_act.py $i
+done
+python track_excitations_act.py
+
+

@@ -1,0 +1,14 @@
+#!/bin/bash
+# script to run track Mhe for a list of N_mhe
+
+for i in {2..25}
+do
+python track_excitations_mhe.py $i 
+done
+python track_excitations.py
+
+
+#python track_excitations_mhe.py $'3' $'True' $'False' $'True'
+
+#python track_excitations_mhe.py $'3' $'False' $'False' $'True'
+
