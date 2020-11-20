@@ -127,3 +127,25 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# mypy
+.mypy_cache/
+
+# pycharm
+.idea
+
+*.npy
+*.bo
+*.bob
+*.ogv
+
+# Remove ACADOS compilation folder
+c_generated_code
+*.json
+
+# Remove bioptim
+bioptim/
+
+
+# Remove solutions
+solutions/
