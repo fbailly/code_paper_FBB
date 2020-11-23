@@ -75,7 +75,7 @@ def compute_err_mhe(init_offset, final_offset, Ns_mhe, X_est, U_est, Ns, model, 
     for i in range(model.nbMuscles()):
         for j in range(int(ceil(Ns / ratio) - Ns_mhe)):
             force_est[i, j] = get_force(
-                X_est[:model.nbQ(), j], X_est[model.nbQ():model.nbQ()*2, j], a_est[:, i],
+                X_est[:model.nbQ(), j], X_est[model.nbQ():model.nbQ()*2, j], a_est[:, j],
                 U_est[nbGT:, j]
             )[i, :]
     get_force = force_func(model, use_activation=False)
