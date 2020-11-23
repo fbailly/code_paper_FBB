@@ -32,12 +32,12 @@ RMSEmin = np.ndarray((co_lvl * len(marker_noise_lvl) * len(EMG_noise_lvl) * 4 * 
 RMSEtrack = np.ndarray((co_lvl * len(marker_noise_lvl) * len(EMG_noise_lvl) * 4 * nb_try))
 
 W_LOW_WEIGHTS = False
-folder_w_track = "solutions/w_track_emg_rt"
-folder_wt_track = "solutions/wt_track_emg_rt"
+folder_w_track = "solutions/w_track_emg_rt_exc"
+folder_wt_track = "solutions/wt_track_emg_rt_exc"
 status_trackEMG = convert_txt_output_to_list(folder_w_track+'/status_track_rt_EMGTrue.txt',
-                           co_lvl, len(marker_noise_lvl), len(EMG_noise_lvl), nb_try)
+                                             co_lvl, len(marker_noise_lvl), len(EMG_noise_lvl), nb_try)
 status_minEMG = convert_txt_output_to_list(folder_wt_track+'/status_track_rt_EMGFalse.txt',
-                           co_lvl, len(marker_noise_lvl), len(EMG_noise_lvl), nb_try)
+                                           co_lvl, len(marker_noise_lvl), len(EMG_noise_lvl), nb_try)
 
 co_lvl_df = [co_lvl_label[0]]*len(marker_noise_lvl)*len(EMG_noise_lvl)*4*nb_try \
             + [co_lvl_label[1]]*len(marker_noise_lvl)*len(EMG_noise_lvl)*4*nb_try \
@@ -83,12 +83,13 @@ for co in range(co_lvl):
             N = mat_content['N_tot']
             NS = int(N - Nmhe)
 
+            ratio = 4
             X_est = mat_content['X_est']
             U_est = mat_content['U_est']
-            q_ref = mat_content['x_sol'][:biorbd_model.nbQ(), ::3][:, :-Nmhe]
-            dq_ref = mat_content['x_sol'][biorbd_model.nbQ():biorbd_model.nbQ() * 2, ::3][:, :-Nmhe]
-            a_ref = mat_content['x_sol'][-biorbd_model.nbMuscles():, ::3][:, :-Nmhe]
-            u_ref = mat_content['u_sol'][:, ::3][:, :-Nmhe]
+            q_ref = mat_content['x_sol'][:biorbd_model.nbQ(), ::ratio][:, :-Nmhe]
+            dq_ref = mat_content['x_sol'][biorbd_model.nbQ():biorbd_model.nbQ() * 2, ::ratio][:, :-Nmhe]
+            a_ref = mat_content['x_sol'][-biorbd_model.nbMuscles():, ::ratio][:, :-Nmhe]
+            u_ref = mat_content['u_sol'][:, ::ratio][:, :-Nmhe]
 
             q_ref_try = np.ndarray((nb_try, q_ref.shape[0], q_ref.shape[1]))
             dq_ref_try = np.ndarray((nb_try, dq_ref.shape[0], dq_ref.shape[1]))
