@@ -35,7 +35,7 @@ def prepare_ocp(
         number_shooting_points,
         use_SX=False,
         nb_threads=8,
-        use_torque=True
+        use_torque=False
 ):
     # --- Options --- #
     # Model path
@@ -79,10 +79,10 @@ def prepare_ocp(
     )
 
     # Initial guesses
-    x_init = InitialGuessOption(np.tile(x0, (number_shooting_points + 1, 1)).T,
+    x_init = InitialGuessOption(np.tile(x0, (number_shooting_points+1, 1)).T,
                                 interpolation=InterpolationType.EACH_FRAME)
 
-    u0 = np.array([tau_init] * nbGT + [muscle_init] * nbMT) + 0.1
+    u0 = np.array([tau_init] * nbGT + [muscle_init] * nbMT)+0.1
     u_init = InitialGuessOption(np.tile(u0, (number_shooting_points, 1)).T,
                                 interpolation=InterpolationType.EACH_FRAME)
     # ------------- #
@@ -109,14 +109,20 @@ if __name__ == "__main__":
     use_activation = True
     use_ACADOS = True
     WRITE_STATS = False
-    save_results = False
+    save_results = True
     TRACK_EMG = True
     if TRACK_EMG:
-        fold = "solutions/w_track_emg_rt/"
+        if use_activation:
+            fold = "solutions/w_track_emg_rt_act/"
+        else:
+            fold = "solutions/w_track_emg_rt_exc/"
     else:
-        fold = "solutions/wt_track_emg_rt/"
-    use_noise = False
-    use_co = False
+        if use_activation:
+            fold = "solutions/wt_track_emg_rt_act/"
+        else:
+            fold = "solutions/wt_track_emg_rt_exc/"
+    use_noise = True
+    use_co = True
     use_bash = False
     use_try = True
     use_N_elec = False
@@ -127,10 +133,10 @@ if __name__ == "__main__":
     Ns = 800
     T_elec = 0.02
     N_elec = int(T_elec * Ns / T)
-    final_offset = 25
+    final_offset = 27
     init_offset = 15
 
-    Ns_mhe = 25
+    Ns_mhe = 7
     if use_bash:
         Ns_mhe = int(sys.argv[1])
 
@@ -139,20 +145,21 @@ if __name__ == "__main__":
                         4, 4, 4,
                         5, 5,
                         6, 6, 6, 6, 6, 6,
-                        8, 8, 8, 8,
+                        6, 8, 8, 8,
                         9, 9, 9]
     else:
-        rt_ratio_tot = [3, 3, 3, 3, 3,
-                        4, 4, 4, 4, 4, 4,
-                        5, 5, 5, 5, 5, 5, 5,
-                        6, 6, 6, 6,
+        rt_ratio_tot = [
+            2,2,2, 3, 3, 3, 4, 4,
+                        4, 4, 4, 4, 4, 5,
+                        5, 5, 5, 5, 5, 5, 6,
+                        6, 6, 7, 6,
                         7, 7, 7, 7, 7, 7, 7]
 
     rt_ratio = rt_ratio_tot[Ns_mhe - 3]
     T_mhe = T / (Ns / rt_ratio) * Ns_mhe
 
     if use_try:
-        nb_try = 3
+        nb_try = 30
     else:
         nb_try = 1
 
@@ -193,21 +200,19 @@ if __name__ == "__main__":
     ocp = prepare_ocp(biorbd_model=biorbd_model, final_time=T_mhe, x0=x_ref, nbGT=nbGT,
                       number_shooting_points=Ns_mhe, use_torque=use_torque, use_SX=use_ACADOS)
     if TRACK_EMG:
-        if os.path.isfile(f"{fold}test_status_track_rt_EMG{TRACK_EMG}.txt"):
-            f = open(f"{fold}test_status_track_rt_EMG{TRACK_EMG}.txt", "a")
-            f.write("Ns_mhe;  Co_lvl;  Marker_noise;  EMG_noise;  nb_try;  iter\n")
-            f.close()
+        f = open(f"{fold}status_track_rt_EMG{TRACK_EMG}.txt", "a")
+        f.write("Ns_mhe;  Co_lvl;  Marker_noise;  EMG_noise;  nb_try;  iter\n")
+        f.close()
     else:
-        if os.path.isfile(f"{fold}test_status_track_rt_EMG{TRACK_EMG}.txt"):
-            f = open(f"{fold}test_status_track_rt_EMG{TRACK_EMG}.txt", "a")
-            f.write("Ns_mhe;  Co_lvl;  Marker_noise;  EMG_noise;  nb_try;  iter\n")
-            f.close()
+        f = open(f"{fold}status_track_rt_EMG{TRACK_EMG}.txt", "a")
+        f.write("Ns_mhe;  Co_lvl;  Marker_noise;  EMG_noise;  nb_try;  iter\n")
+        f.close()
     # Loop for each co-contraction level
     for co in range(0, nb_co_lvl):
         # get initial guess
         motion = 'REACH2'
         with open(
-                f"solutions/sim_ac_{int(T * 1000)}ms_800sn_{motion}_co_level_{co}.bob", 'rb'
+                f"solutions/sim_ac_{int(T * 1000)}ms_{Ns}sn_{motion}_co_level_{co}.bob", 'rb'
         ) as file:
             data = pickle.load(file)
         states = data['data'][0]
@@ -291,10 +296,10 @@ if __name__ == "__main__":
 
                     # set initial guess on state
                     x_init = InitialGuessOption(
-                        x_ref[:, 0:Ns_mhe * rt_ratio + 1:rt_ratio], interpolation=InterpolationType.EACH_FRAME)
+                        x_ref[:, 0], interpolation=InterpolationType.CONSTANT)
                     u0 = muscles_target
                     u_init = InitialGuessOption(
-                        u0[:, 0:Ns_mhe * rt_ratio:rt_ratio], interpolation=InterpolationType.EACH_FRAME)
+                        u0[:, 0], interpolation=InterpolationType.CONSTANT)
                     ocp.update_initial_guess(x_init, u_init)
 
                     # Update objectives functions
@@ -302,10 +307,7 @@ if __name__ == "__main__":
                     if TRACK_EMG:
                         w_marker = 100000000
                         w_control = 100000
-                        # if co > 0:
-                        #     w_marker = 100000000
-                        #     w_control = 100000
-                        w_torque = 10000000
+                        w_torque = 100000000
                         objectives.add(Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=w_control,
                                        target=muscles_target[nbGT:, 0:Ns_mhe * rt_ratio:rt_ratio],
                                        )
@@ -317,11 +319,11 @@ if __name__ == "__main__":
                         objectives.add(Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=10)
                     else:
                         w_marker = 100000000
-                        w_control = 100000
-                        w_torque = 10
+                        w_control = 1000000
+                        w_torque = 10000000
                         objectives.add(Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=w_control)
                         if use_torque:
-                            objectives.add(Objective.Lagrange.MINIMIZE_TORQUE, weight=500)
+                            objectives.add(Objective.Lagrange.MINIMIZE_TORQUE, weight=w_torque)
 
                     objectives.add(Objective.Lagrange.MINIMIZE_MARKERS, weight=w_marker,
                                    target=markers_target[:, :, 0:(Ns_mhe + 1) * rt_ratio:rt_ratio])
@@ -332,7 +334,7 @@ if __name__ == "__main__":
                     if use_activation is not True:
                         objectives.add(
                             Objective.Lagrange.MINIMIZE_STATE,
-                            weight=1,
+                            weight=10,
                             states_idx=np.array(
                                 range(biorbd_model.nbQ() * 2, biorbd_model.nbQ() * 2 + biorbd_model.nbMuscles()))
                         )
@@ -352,9 +354,9 @@ if __name__ == "__main__":
                                     })
                     if sol['status'] != 0:
                         if TRACK_EMG:
-                            f = open(f"{fold}test_status_track_rt_EMG{TRACK_EMG}.txt", "a")
+                            f = open(f"{fold}status_track_rt_EMG{TRACK_EMG}.txt", "a")
                         else:
-                            f = open(f"{fold}test_status_track_rt_EMG{TRACK_EMG}.txt", "a")
+                            f = open(f"{fold}status_track_rt_EMG{TRACK_EMG}.txt", "a")
 
                         f.write(f"{Ns_mhe}; {co}; {marker_lvl}; {EMG_lvl}; {tries}; "
                                 f"'init'\n")
@@ -379,8 +381,12 @@ if __name__ == "__main__":
 
                         objectives = ObjectiveList()
                         if TRACK_EMG:
-                            w_torque = 1000000
-                            w_state = 10
+                            # w_marker = 10000000
+                            # w_control = 100000
+                            # # if co > 0:
+                            # #     w_marker = 1000000
+                            # #     w_control = 100000
+                            # w_torque = 1000000
                             objectives.add(Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=w_control,
                                            target=muscles_target[nbGT:,
                                                   iter * rt_ratio:(Ns_mhe + iter) * rt_ratio:rt_ratio],
@@ -392,10 +398,11 @@ if __name__ == "__main__":
                             if use_torque:
                                 objectives.add(Objective.Lagrange.MINIMIZE_TORQUE, weight=w_torque)
                         else:
-                            objectives.add(Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=10000,
+                            # w_torque = 1000000
+                            objectives.add(Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=100000,
                                            )
                             if use_torque:
-                                objectives.add(Objective.Lagrange.MINIMIZE_TORQUE, weight=500)
+                                objectives.add(Objective.Lagrange.MINIMIZE_TORQUE, weight=w_torque)
 
                         objectives.add(Objective.Lagrange.MINIMIZE_MARKERS, weight=w_marker,
                                        target=markers_target[:, :,
@@ -419,9 +426,6 @@ if __name__ == "__main__":
                                             "nlp_solver_tol_comp": 1e-4,
                                             "nlp_solver_tol_eq": 1e-4,
                                             "nlp_solver_tol_stat": 1e-3,
-                                            "integrator_type": "IRK",
-                                            "nlp_solver_type": "SQP",
-                                            "sim_method_num_steps": 1,
                                         })
                         x0, u0, x_out, u_out = warm_start_mhe(ocp, sol, use_activation=use_activation)
                         X_est[:, iter] = x_out
@@ -429,9 +433,9 @@ if __name__ == "__main__":
                             U_est[:, iter] = u_out
                         if sol['status'] != 0:
                             if TRACK_EMG:
-                                f = open(f"{fold}test_status_track_rt_EMG{TRACK_EMG}.txt", "a")
+                                f = open(f"{fold}status_track_rt_EMG{TRACK_EMG}.txt", "a")
                             else:
-                                f = open(f"{fold}test_status_track_rt_EMG{TRACK_EMG}.txt", "a")
+                                f = open(f"{fold}status_track_rt_EMG{TRACK_EMG}.txt", "a")
                             f.write(f"{Ns_mhe}; {co}; {marker_lvl}; {EMG_lvl}; {tries}; "
                                     f"{iter}\n")
                             f.close()
@@ -556,7 +560,7 @@ if __name__ == "__main__":
                     # plt.xlabel("Time")
                     # plt.ylabel("Markers Position")
                     # plt.show()
-                    print()
+                    # print()
 
                 # Write stats file for all tries
                 # T_mhe_new = sum(T_mhe_tries)/nb_try

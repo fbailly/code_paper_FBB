@@ -111,9 +111,15 @@ if __name__ == "__main__":
     save_results = True
     TRACK_EMG = True
     if TRACK_EMG:
-        fold = "solutions/w_track_emg_rt/"
+        if use_activation:
+            fold = "solutions/w_track_emg_rt_act/"
+        else:
+            fold = "solutions/w_track_emg_rt_exc/"
     else:
-        fold = "solutions/wt_track_emg_rt/"
+        if use_activation:
+            fold = "solutions/wt_track_emg_rt_act/"
+        else:
+            fold = "solutions/wt_track_emg_rt_exc/"
     use_noise = True
     use_co = True
     use_bash = False
@@ -126,7 +132,7 @@ if __name__ == "__main__":
     Ns = 800
     T_elec = 0.02
     N_elec = int(T_elec * Ns / T)
-    final_offset = 25
+    final_offset = 27
     init_offset = 15
 
     Ns_mhe = 7
@@ -141,10 +147,11 @@ if __name__ == "__main__":
                         6, 8, 8, 8,
                         9, 9, 9]
     else:
-        rt_ratio_tot = [3, 3, 3, 3, 3,
-                        4, 4, 4, 4, 4, 4,
-                        5, 5, 5, 5, 5, 5, 5,
-                        6, 6, 6, 6,
+        rt_ratio_tot = [
+            2,2,2, 3, 3, 3, 4, 4,
+                        4, 4, 4, 4, 4, 5,
+                        5, 5, 5, 5, 5, 5, 6,
+                        6, 6, 7, 6,
                         7, 7, 7, 7, 7, 7, 7]
 
     rt_ratio = rt_ratio_tot[Ns_mhe-3]
@@ -193,15 +200,13 @@ if __name__ == "__main__":
     ocp = prepare_ocp(biorbd_model=biorbd_model, final_time=T_mhe, x0=x_ref, nbGT=nbGT,
                       number_shooting_points=Ns_mhe, use_torque=use_torque, use_SX=use_ACADOS)
     if TRACK_EMG:
-        if os.path.isfile(f"{fold}status_track_rt_EMG{TRACK_EMG}.txt"):
-            f = open(f"{fold}status_track_rt_EMG{TRACK_EMG}.txt", "a")
-            f.write("Ns_mhe;  Co_lvl;  Marker_noise;  EMG_noise;  nb_try;  iter\n")
-            f.close()
+        f = open(f"{fold}status_track_rt_EMG{TRACK_EMG}.txt", "a")
+        f.write("Ns_mhe;  Co_lvl;  Marker_noise;  EMG_noise;  nb_try;  iter\n")
+        f.close()
     else:
-        if os.path.isfile(f"{fold}status_track_rt_EMG{TRACK_EMG}.txt"):
-            f = open(f"{fold}status_track_rt_EMG{TRACK_EMG}.txt", "a")
-            f.write("Ns_mhe;  Co_lvl;  Marker_noise;  EMG_noise;  nb_try;  iter\n")
-            f.close()
+        f = open(f"{fold}status_track_rt_EMG{TRACK_EMG}.txt", "a")
+        f.write("Ns_mhe;  Co_lvl;  Marker_noise;  EMG_noise;  nb_try;  iter\n")
+        f.close()
     # Loop for each co-contraction level
     for co in range(0, nb_co_lvl):
         # get initial guess
@@ -300,12 +305,9 @@ if __name__ == "__main__":
                     # Update objectives functions
                     objectives = ObjectiveList()
                     if TRACK_EMG:
-                        w_marker = 10000000
+                        w_marker = 100000000
                         w_control = 100000
-                        # if co > 0:
-                        #     w_marker = 100000000
-                        #     w_control = 100000
-                        w_torque = 10000000
+                        w_torque = 100000000
                         objectives.add(Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=w_control,
                                        target=muscles_target[nbGT:, 0:Ns_mhe*rt_ratio:rt_ratio],
                                        )
@@ -317,8 +319,8 @@ if __name__ == "__main__":
                         objectives.add(Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=10)
                     else:
                         w_marker = 100000000
-                        w_control = 100000
-                        w_torque = 1000000
+                        w_control = 1000000
+                        w_torque = 10000000
                         objectives.add(Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=w_control)
                         if use_torque:
                             objectives.add(Objective.Lagrange.MINIMIZE_TORQUE, weight=w_torque)
@@ -379,12 +381,12 @@ if __name__ == "__main__":
 
                         objectives = ObjectiveList()
                         if TRACK_EMG:
-                            w_marker = 10000000
-                            w_control = 100000
-                            # if co > 0:
-                            #     w_marker = 1000000
-                            #     w_control = 100000
-                            w_torque = 1000000
+                            # w_marker = 10000000
+                            # w_control = 100000
+                            # # if co > 0:
+                            # #     w_marker = 1000000
+                            # #     w_control = 100000
+                            # w_torque = 1000000
                             objectives.add(Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=w_control,
                                            target=muscles_target[nbGT:, iter*rt_ratio:(Ns_mhe+iter)*rt_ratio:rt_ratio],
                                            )
@@ -395,7 +397,7 @@ if __name__ == "__main__":
                             if use_torque:
                                 objectives.add(Objective.Lagrange.MINIMIZE_TORQUE, weight=w_torque)
                         else:
-                            w_torque = 1000000
+                            # w_torque = 1000000
                             objectives.add(Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=100000,
                                            )
                             if use_torque:
@@ -422,9 +424,9 @@ if __name__ == "__main__":
                                             "nlp_solver_tol_comp": 1e-4,
                                             "nlp_solver_tol_eq": 1e-4,
                                             "nlp_solver_tol_stat": 1e-3,
-                                            "integrator_type": "IRK",
-                                            "nlp_solver_type": "SQP",
-                                            "sim_method_num_steps": 1,
+                                            # "integrator_type": "IRK",
+                                            # "nlp_solver_type": "SQP",
+                                            # "sim_method_num_steps": 1,
                                         })
                         x0, u0, x_out, u_out = warm_start_mhe(ocp, sol, use_activation=use_activation)
                         X_est[:, iter] = x_out
