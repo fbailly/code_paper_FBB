@@ -106,10 +106,10 @@ if __name__ == "__main__":
     # Configuration of the problem
     biorbd_model = biorbd.Model("arm_wt_rot_scap.bioMod")
     use_torque = True
-    use_activation = True
+    use_activation = False
     use_ACADOS = True
     WRITE_STATS = False
-    save_results = True
+    save_results = False
     TRACK_EMG = True
     if TRACK_EMG:
         if use_activation:
@@ -121,10 +121,10 @@ if __name__ == "__main__":
             fold = "solutions/wt_track_emg_rt_act/"
         else:
             fold = "solutions/wt_track_emg_rt_exc/"
-    use_noise = True
-    use_co = True
+    use_noise = False
+    use_co = False
     use_bash = False
-    use_try = True
+    use_try = False
     use_N_elec = False
     if use_activation:
         use_N_elec = True
@@ -494,72 +494,72 @@ if __name__ == "__main__":
                     # plt.legend()
                     # plt.tight_layout()
 
-                    # plt.figure('q')
-                    # for i in range(biorbd_model.nbQ()):
-                    #     plt.subplot(3, 2, i + 1)
-                    #     plt.plot(X_est[i, :], 'x')
-                    #     plt.plot(q_ref[i, 0:Ns+1:rt_ratio])
-                    #     # plt.plot(muscles_target[i, :], 'k--')
-                    #     # plt.title(biorbd_model.muscleNames()[i].to_string())
-                    # plt.legend(labels=['q_est', 'q_ref'], bbox_to_anchor=(1.05, 1), loc='upper left',
-                    #            borderaxespad=0.)
-                    # plt.figure('qdot')
-                    # for i in range(biorbd_model.nbQ(), biorbd_model.nbQ()*2):
-                    #     plt.subplot(3, 2, i-nbQ + 1)
-                    #     plt.plot(X_est[i, :], 'x')
-                    #     plt.plot(dq_ref[i-nbQ, 0:Ns + 1:rt_ratio])
-                    #     # plt.plot(muscles_target[i, :], 'k--')
-                    #     # plt.title(biorbd_model.muscleNames()[i].to_string())
-                    # plt.legend(labels=['q_est', 'q_ref'], bbox_to_anchor=(1.05, 1), loc='upper left',
-                    #            borderaxespad=0.)
-                    # plt.figure('Tau')
-                    # for i in range(biorbd_model.nbQ()):
-                    #     plt.subplot(3, 2, i + 1)
-                    #     plt.plot(U_est[i, :], 'x')
-                    #     plt.plot(u_ref[i, 0:Ns + 1:rt_ratio])
-                    #     plt.plot(muscles_target[i, :], 'k--')
-                    #     # plt.title(biorbd_model.muscleNames()[i].to_string())
-                    # plt.legend(labels=['Tau_est', 'tau_ref'], bbox_to_anchor=(1.05, 1), loc='upper left',
-                    #            borderaxespad=0.)
-                    # plt.figure('Muscles excitations')
-                    # for i in range(biorbd_model.nbMuscles()):
-                    #     plt.subplot(4, 5, i + 1)
-                    #     plt.plot(U_est[nbGT + i, :])
-                    #     plt.plot(u_ref[nbGT + i, 0:Ns:rt_ratio], c='red')
-                    #     plt.plot(muscles_target[nbGT + i, 0:Ns:rt_ratio], 'k--')
-                    #     plt.title(biorbd_model.muscleNames()[i].to_string())
-                    # plt.legend(labels=['u_est', 'u_init', 'u_with_noise'], bbox_to_anchor=(1.05, 1), loc='upper left',
-                    #            borderaxespad=0.)
-                    #
-                    # plt.figure('Muscles_force')
-                    # for i in range(biorbd_model.nbMuscles()):
-                    #     plt.subplot(4, 5, i + 1)
-                    #     plt.plot(force_est[tries, i, :])
-                    #     plt.plot(force_ref[i, 0:Ns:rt_ratio], c='red')
-                    #     plt.title(biorbd_model.muscleNames()[i].to_string())
-                    # plt.legend(labels=['u_est', 'u_init', 'u_with_noise'], bbox_to_anchor=(1.05, 1), loc='upper left',
-                    #            borderaxespad=0.)
-                    # # plt.tight_layout()
-                    #
-                    # n_mark = biorbd_model.nbMarkers()
-                    # get_markers = markers_fun(biorbd_model)
-                    #
-                    # markers = np.zeros((3, biorbd_model.nbMarkers(), q_ref.shape[1]))
-                    # for i in range(q_ref.shape[1]):
-                    #     markers[:, :, i] = get_markers(q_ref[:, i])
-                    #
-                    # markers_est = np.zeros((3, biorbd_model.nbMarkers(), X_est.shape[1]))
-                    # for i in range(X_est.shape[1]):
-                    #     markers_est[:, :, i] = get_markers(X_est[:biorbd_model.nbQ(), i])
-                    #
-                    # plt.figure("Markers")
-                    # for i in range(markers_target.shape[1]):
-                    #     plt.plot(markers_target[:, i, 0:Ns:rt_ratio].T, "k")
-                    #     plt.plot(markers[:, i, 0:Ns:rt_ratio].T, "r--")
-                    #     plt.plot(markers_est[:, i, :].T, "b")
-                    # plt.xlabel("Time")
-                    # plt.ylabel("Markers Position")
-                    # plt.show()
+                    plt.figure('q')
+                    for i in range(biorbd_model.nbQ()):
+                        plt.subplot(3, 2, i + 1)
+                        plt.plot(X_est[i, :], 'x')
+                        plt.plot(q_ref[i, 0:Ns+1:rt_ratio])
+                        # plt.plot(muscles_target[i, :], 'k--')
+                        # plt.title(biorbd_model.muscleNames()[i].to_string())
+                    plt.legend(labels=['q_est', 'q_ref'], bbox_to_anchor=(1.05, 1), loc='upper left',
+                               borderaxespad=0.)
+                    plt.figure('qdot')
+                    for i in range(biorbd_model.nbQ(), biorbd_model.nbQ()*2):
+                        plt.subplot(3, 2, i-nbQ + 1)
+                        plt.plot(X_est[i, :], 'x')
+                        plt.plot(dq_ref[i-nbQ, 0:Ns + 1:rt_ratio])
+                        # plt.plot(muscles_target[i, :], 'k--')
+                        # plt.title(biorbd_model.muscleNames()[i].to_string())
+                    plt.legend(labels=['q_est', 'q_ref'], bbox_to_anchor=(1.05, 1), loc='upper left',
+                               borderaxespad=0.)
+                    plt.figure('Tau')
+                    for i in range(biorbd_model.nbQ()):
+                        plt.subplot(3, 2, i + 1)
+                        plt.plot(U_est[i, :], 'x')
+                        plt.plot(u_ref[i, 0:Ns + 1:rt_ratio])
+                        plt.plot(muscles_target[i, :], 'k--')
+                        # plt.title(biorbd_model.muscleNames()[i].to_string())
+                    plt.legend(labels=['Tau_est', 'tau_ref'], bbox_to_anchor=(1.05, 1), loc='upper left',
+                               borderaxespad=0.)
+                    plt.figure('Muscles excitations')
+                    for i in range(biorbd_model.nbMuscles()):
+                        plt.subplot(4, 5, i + 1)
+                        plt.plot(U_est[nbGT + i, :])
+                        plt.plot(u_ref[nbGT + i, 0:Ns:rt_ratio], c='red')
+                        plt.plot(muscles_target[nbGT + i, 0:Ns:rt_ratio], 'k--')
+                        plt.title(biorbd_model.muscleNames()[i].to_string())
+                    plt.legend(labels=['u_est', 'u_init', 'u_with_noise'], bbox_to_anchor=(1.05, 1), loc='upper left',
+                               borderaxespad=0.)
+
+                    plt.figure('Muscles_force')
+                    for i in range(biorbd_model.nbMuscles()):
+                        plt.subplot(4, 5, i + 1)
+                        plt.plot(force_est[tries, i, :])
+                        plt.plot(force_ref[i, 0:Ns:rt_ratio], c='red')
+                        plt.title(biorbd_model.muscleNames()[i].to_string())
+                    plt.legend(labels=['u_est', 'u_init', 'u_with_noise'], bbox_to_anchor=(1.05, 1), loc='upper left',
+                               borderaxespad=0.)
+                    # plt.tight_layout()
+
+                    n_mark = biorbd_model.nbMarkers()
+                    get_markers = markers_fun(biorbd_model)
+
+                    markers = np.zeros((3, biorbd_model.nbMarkers(), q_ref.shape[1]))
+                    for i in range(q_ref.shape[1]):
+                        markers[:, :, i] = get_markers(q_ref[:, i])
+
+                    markers_est = np.zeros((3, biorbd_model.nbMarkers(), X_est.shape[1]))
+                    for i in range(X_est.shape[1]):
+                        markers_est[:, :, i] = get_markers(X_est[:biorbd_model.nbQ(), i])
+
+                    plt.figure("Markers")
+                    for i in range(markers_target.shape[1]):
+                        plt.plot(markers_target[:, i, 0:Ns:rt_ratio].T, "k")
+                        plt.plot(markers[:, i, 0:Ns:rt_ratio].T, "r--")
+                        plt.plot(markers_est[:, i, :].T, "b")
+                    plt.xlabel("Time")
+                    plt.ylabel("Markers Position")
+                    plt.show()
                     # print()
 
                 # Write stats file for all tries

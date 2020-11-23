@@ -43,8 +43,8 @@ def compute_err_mhe(init_offset, final_offset, Ns_mhe, X_est, U_est, Ns, model, 
     offset = final_offset - Ns_mhe
     nbGT = nbGT
     Ns = Ns
-    q_ref = q[:, 0:Ns + 1:ratio]
-    dq_ref = dq[:, 0:Ns + 1:ratio]
+    q_ref = q[:, 0:Ns+1:ratio]
+    dq_ref = dq[:, 0:Ns+1:ratio]
     tau_ref = tau[:, 0:Ns:ratio]
     if use_activation:
         muscles_ref = activations[:, 0:Ns:ratio]
@@ -63,7 +63,7 @@ def compute_err_mhe(init_offset, final_offset, Ns_mhe, X_est, U_est, Ns, model, 
     for i in range(Ns + 1):
         sol_mark_tmp[:, :, i] = get_markers(q[:, i])
     sol_mark_ref = sol_mark_tmp[:, :, 0:Ns + 1:ratio]
-    err['markers'] = np.sqrt(np.square(sol_mark[:, :, init_offset:-offset] - sol_mark_ref[:, :, init_offset:-final_offset]).mean(axis=2)).mean()
+    err['markers'] = np.sqrt(np.square(sol_mark[:, :, init_offset:-offset] - sol_mark_ref[:, :, init_offset:-final_offset]).sum(axis=0).mean(axis=1)).mean()
 
     force_ref_tmp = np.ndarray((model.nbMuscles(), Ns ))
     force_est = np.ndarray((model.nbMuscles(), int(ceil(Ns / ratio) - Ns_mhe)))
@@ -113,7 +113,7 @@ def compute_err(init_offset, final_offset, X_est, U_est, Ns, model, q, dq, tau,
     for i in range(Ns + 1):
         sol_mark_tmp[:, :, i] = get_markers(q[:, i])
     sol_mark_ref = sol_mark_tmp[:, :, 0:Ns + 1]
-    err['markers'] = np.sqrt(np.square(sol_mark[:, :, init_offset:-final_offset] - sol_mark_ref[:, :, init_offset:-final_offset]).mean(axis=1)).mean()
+    err['markers'] = np.sqrt(np.square(sol_mark[:, :, init_offset:-final_offset] - sol_mark_ref[:, :, init_offset:-final_offset]).sum(axis=0).mean(axis=1)).mean()
     force_ref_tmp = np.ndarray((model.nbMuscles(), Ns))
     force_est = np.ndarray((model.nbMuscles(), Ns))
     if use_activation:
@@ -156,7 +156,10 @@ def warm_start_mhe(ocp, sol, use_activation=False):
     w_tau = 'tau' in data[1].keys()
     if w_tau:
         tau = data[1]["tau"]
-        u = np.vstack([tau, act])
+        if use_activation:
+            u = np.vstack([tau, act])
+        else:
+            u = np.vstack([tau, exc])
     x0 = np.hstack((x[:, 1:], np.tile(x[:, [-1]], 1)))  # discard oldest estimate of the window, duplicates youngest
     u0 = u[:, 1:]  # discard oldest estimate of the window
     x_out = x[:, 0]
