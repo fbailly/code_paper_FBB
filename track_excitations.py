@@ -104,7 +104,7 @@ def prepare_ocp(
 
 if __name__ == "__main__":
     use_activation = False
-    use_torque = False
+    use_torque = True
     use_ACADOS = True
     use_bash = True
     save_stats = True
@@ -117,7 +117,7 @@ if __name__ == "__main__":
     T_elec = 0.02
     T = 8
     Ns = 800
-    final_offset = 22
+    final_offset = 27
     init_offset = 15
     # if use_N_elec:
     #     Ns = Ns - N_elec
@@ -195,7 +195,7 @@ if __name__ == "__main__":
     if use_activation:
         objectives.add(Objective.Lagrange.TRACK_MUSCLES_CONTROL, weight=10000, target=muscles_target_real[:, :-1])
     else:
-        objectives.add(Objective.Lagrange.TRACK_MUSCLES_CONTROL, weight=1000, target=muscles_target[:, :-1])
+        objectives.add(Objective.Lagrange.TRACK_MUSCLES_CONTROL, weight=100000, target=muscles_target[:, :-1])
 
     objectives.add(Objective.Lagrange.TRACK_MARKERS, weight=100000000, target=markers_target[:, :, :])
     objectives.add(Objective.Lagrange.MINIMIZE_STATE, weight=1, states_idx=np.array(range(nbQ)))
@@ -205,7 +205,7 @@ if __name__ == "__main__":
             Objective.Lagrange.MINIMIZE_STATE, weight=1, states_idx=np.array(range(nbQ * 2, nbQ * 2 + nbMT))
         )
     if use_torque:
-        objectives.add(Objective.Lagrange.MINIMIZE_TORQUE, weight=10)
+        objectives.add(Objective.Lagrange.MINIMIZE_TORQUE, weight=100000000)
     ocp.update_objectives(objectives)
 
     if use_ACADOS:
@@ -255,13 +255,34 @@ if __name__ == "__main__":
 
     use_noise = False
     print(err)
-    err_tmp = np.array([[Ns, 1, toc, toc, err['q'], err['q_dot'], err['tau'], err['muscles'], err['markers']]])
+    q_est = X_est[:biorbd_model.nbQ(), :]
+    dq_est = X_est[biorbd_model.nbQ():biorbd_model.nbQ() * 2, :]
+    if use_activation:
+        a_est = np.zeros((nbMT, Ns))
+    else:
+        a_est = X_est[-nbMT:, :]
+    force_ref = np.ndarray((biorbd_model.nbMuscles(), Ns))
+    force_est = np.ndarray((biorbd_model.nbMuscles(), Ns))
+    get_force = force_func(biorbd_model, use_activation=use_activation)
+    for i in range(biorbd_model.nbMuscles()):
+        for j in range(Ns):
+            force_est[i, j] = get_force(
+                q_est[:, j], dq_est[:, j], a_est[:, j], U_est[nbGT:, j]
+            )[i, :]
+
+    get_force = force_func(biorbd_model, use_activation=False)
+    for i in range(biorbd_model.nbMuscles()):
+        for k in range(Ns):
+            force_ref[i, k] = get_force(q_ref[:, k], dq_ref[:, k], a_ref[:, k], u_ref[:, k])[i, :]
+    err_tmp = np.array([[Ns, 1, toc, toc, err['q'], err['q_dot'], err['tau'], err['muscles'],
+               err['markers'], err['force']]])
+
     if save_stats:
         if os.path.isfile(f"solutions/stats_rt_activation_driven{use_activation}.mat"):
             matcontent = sio.loadmat(
                 f"solutions/stats_rt_activation_driven{use_activation}.mat")
             err_mat = np.concatenate((matcontent['err_tries'], err_tmp))
-            err_dic = {"err_tries": err_mat}
+            err_dic = {"err_tries": err_mat, 'force_est': force_est, 'force_ref': force_ref}
             sio.savemat(f"solutions/stats_rt_activation_driven{use_activation}.mat", err_dic)
         else:
             RuntimeError(f"File 'solutions/stats_rt_activation_driven{use_activation}.mat' does not exist")

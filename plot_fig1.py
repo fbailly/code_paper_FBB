@@ -7,11 +7,11 @@ import seaborn
 use_torque = False
 use_noise = False
 
-nb_try = 100
+nb_try = 3
 matcontent = sio.loadmat("solutions/stats_rt_activation_drivenTrue.mat")
 err_ac = matcontent['err_tries']
-err_ac_mhe = err_ac[:-1, :].reshape(-1, nb_try, 9)
-err_ac_full = err_ac[-1, :].reshape(1, 9)
+err_ac_mhe = err_ac[:-1, :].reshape(-1, nb_try, 10)
+err_ac_full = err_ac[-1, :].reshape(1, 10)
 err_mean_ac = np.mean(err_ac_mhe, axis=1)
 err_std_ac = np.std(err_ac_mhe, axis=1)
 err_mean_ac_full = np.concatenate((err_mean_ac, err_ac_full))
@@ -24,8 +24,8 @@ time_mean_ac = (err_mean_ac[:, 3])
 
 matcontent = sio.loadmat("solutions/stats_rt_activation_drivenFalse.mat")
 err_ex = matcontent['err_tries']
-err_ex_mhe = err_ex[:-1, :].reshape(-1, nb_try, 9)
-err_ex_full = err_ex[-1, :].reshape(1, 9)
+err_ex_mhe = err_ex[:-1, :].reshape(-1, nb_try, 10)
+err_ex_full = err_ex[-1, :].reshape(1, 10)
 err_mean_ex = np.mean(err_ex_mhe, axis=1)
 err_std_ex = np.std(err_ex_mhe, axis=1)
 err_mean_ex_full = np.concatenate((err_mean_ex, err_ex_full))

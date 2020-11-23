@@ -7,29 +7,29 @@ use_noise = False
 use_log = True
 import seaborn
 
-nb_try = 1
-matcontent = sio.loadmat("solutions/stats_rt_test_activation_drivenTrue.mat")
+nb_try = 3
+matcontent = sio.loadmat("solutions/stats_rt_activation_drivenTrue.mat")
 err_ac = matcontent['err_tries']
-err_ac_mhe = err_ac[:-1, :].reshape(-1, nb_try, 9)
-err_ac_full = err_ac[-1, :].reshape(1, 9)
+err_ac_mhe = err_ac[:-1, :].reshape(-1, nb_try, 10)
+err_ac_full = err_ac[-1, :].reshape(1, 10)
 err_mean_ac = np.mean(err_ac_mhe, axis=1)
 err_std_ac = np.std(err_ac_mhe, axis=1)
 err_mean_ac_full = np.concatenate((err_mean_ac, err_ac_full))
-Nmhe_ac = (err_mean_ac_full[1:, 0])
+Nmhe_ac = (err_mean_ac_full[:, 0])
 ratio = (err_mean_ac_full[:, 1])
 time_tot_ac = (err_mean_ac_full[:, 2])
 time_ac = (err_mean_ac_full[:, 3])
 time_std_ac = err_std_ac[:, 3]
 time_mean_ac = (err_mean_ac[:, 3])
 if use_log:
-    err_q_ac = np.log10(err_mean_ac_full[1:, 4])
+    err_q_ac = np.log10(err_mean_ac_full[:, 4])
     # err_std_q_ac = (err_std_ac[:, 4])
-    err_dq_ac = np.log10(err_mean_ac_full[1:, 5])
+    err_dq_ac = np.log10(err_mean_ac_full[:, 5])
     # err_std_dq_ac = np.log10(err_std_ac[:, 5])
     # err_tau_ac = np.log10(err_mean_ac_full[:, 4])
-    err_muscles_ac = np.log10(err_mean_ac_full[1:, 7])
+    err_muscles_ac = np.log10(err_mean_ac_full[:, 7])
     # err_std_muscles_ac = np.log10(err_std_ac[:, 7])
-    err_markers_ac = np.log10(err_mean_ac_full[1:, 8])
+    err_markers_ac = np.log10(err_mean_ac_full[:, 8])
     # err_std_markers_ac = np.log10(err_std_ac[:, 8])
 else:
     err_q_ac = (err_mean_ac_full[:, 4])
@@ -41,39 +41,39 @@ else:
     # err_std_muscles_ac = (err_std_ac[:, 7])
     err_markers_ac = (err_mean_ac_full[:, 8])
     # err_std_markers_ac = (err_std_ac[:, 8])
-
+nb_try = 3
 matcontent = sio.loadmat("solutions/stats_rt_activation_drivenFalse.mat")
-err_ex = matcontent['err_tries'][:-2, :]
-err_ex_mhe = err_ex[:-1, :].reshape(-1, nb_try, 9)
-err_ex_full = err_ex[-1, :].reshape(1, 9)
+err_ex = matcontent['err_tries']
+err_ex_mhe = err_ex[:-1, :].reshape(-1, nb_try, 10)
+err_ex_full = err_ex[-1, :].reshape(1, 10)
 err_mean_ex = np.mean(err_ex_mhe, axis=1)
 err_std_ex = np.std(err_ac_mhe, axis=1)
 err_mean_ex_full = np.concatenate((err_mean_ex, err_ex_full))
-Nmhe_ex = (err_mean_ex_full[1:, 0])
+Nmhe_ex = (err_mean_ex_full[:, 0])
 ratio_ex = (err_mean_ex_full[:, 1])
 time_tot_ex = (err_mean_ex_full[:, 2])
 time_ex = (err_mean_ex_full[:, 3])
 time_std_ex = err_std_ex[:, 3]
 time_mean_ex = (err_mean_ex[:, 3])
 if use_log:
-    err_q_ex = np.log10(err_mean_ex_full[1:, 4])
+    err_q_ex = np.log10(err_mean_ex_full[:, 4])
     # err_std_q_ex = np.log10(err_std_ex[:, 4])
-    err_dq_ex = np.log10(err_mean_ex_full[1:, 5])
+    err_dq_ex = np.log10(err_mean_ex_full[:, 5])
     # err_std_dq_ex = np.log10(err_std_ex[:, 5])
     # err_tau_ex = np.log10(err_mean_ex_full[:, 4])
-    err_muscles_ex = np.log10(err_mean_ex_full[1:, 7])
+    err_muscles_ex = np.log10(err_mean_ex_full[:, 7])
     # err_std_muscles_ex = np.log10(err_std_ex[1:, 7])
-    err_markers_ex = np.log10(err_mean_ex_full[1:, 8])
+    err_markers_ex = np.log10(err_mean_ex_full[:, 8])
     # err_std_markers_ex = np.log10(err_std_ex[:, 8])
 else:
-    err_q_ex = (err_mean_ex_full[1:, 4])
+    err_q_ex = (err_mean_ex_full[:, 4])
     # err_std_q_ex = (err_std_ex[:, 4])
     err_dq_ex = (err_mean_ex_full[:, 5])
     # err_std_dq_ex = (err_std_ex[:, 5])
     # err_tau_ex = np.log10(err_mean_ex_full[:, 4])
-    err_muscles_ex = (err_mean_ex_full[1:, 7])
+    err_muscles_ex = (err_mean_ex_full[:, 7])
     # err_std_muscles_ex = (err_std_ex[:, 7])
-    err_markers_ex = (err_mean_ex_full[1:, 8])
+    err_markers_ex = (err_mean_ex_full[:, 8])
     # err_std_markers_ex = (err_std_ex[:, 8])
 
 # seaborn.set_style("whitegrid")
