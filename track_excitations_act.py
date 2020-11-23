@@ -106,7 +106,7 @@ if __name__ == "__main__":
     use_activation = True
     use_torque = True
     use_ACADOS = True
-    use_bash = False
+    use_bash = True
     save_stats = True
     if use_activation:
         use_N_elec = True
@@ -117,7 +117,7 @@ if __name__ == "__main__":
     T_elec = 0.02
     T = 8
     Ns = 800
-    final_offset = 22
+    final_offset = 27
     init_offset = 15
     # if use_N_elec:
     #     Ns = Ns - N_elec

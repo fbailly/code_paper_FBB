@@ -117,7 +117,7 @@ if __name__ == "__main__":
     T_elec = 0.02
     T = 8
     Ns = 800
-    final_offset = 22
+    final_offset = 27
     init_offset = 15
     # if use_N_elec:
     #     Ns = Ns - N_elec
@@ -195,7 +195,7 @@ if __name__ == "__main__":
     if use_activation:
         objectives.add(Objective.Lagrange.TRACK_MUSCLES_CONTROL, weight=10000, target=muscles_target_real[:, :-1])
     else:
-        objectives.add(Objective.Lagrange.TRACK_MUSCLES_CONTROL, weight=1000, target=muscles_target[:, :-1])
+        objectives.add(Objective.Lagrange.TRACK_MUSCLES_CONTROL, weight=100000, target=muscles_target[:, :-1])
 
     objectives.add(Objective.Lagrange.TRACK_MARKERS, weight=100000000, target=markers_target[:, :, :])
     objectives.add(Objective.Lagrange.MINIMIZE_STATE, weight=1, states_idx=np.array(range(nbQ)))
@@ -205,7 +205,7 @@ if __name__ == "__main__":
             Objective.Lagrange.MINIMIZE_STATE, weight=1, states_idx=np.array(range(nbQ * 2, nbQ * 2 + nbMT))
         )
     if use_torque:
-        objectives.add(Objective.Lagrange.MINIMIZE_TORQUE, weight=10000000)
+        objectives.add(Objective.Lagrange.MINIMIZE_TORQUE, weight=100000000)
     ocp.update_objectives(objectives)
 
     if use_ACADOS:
