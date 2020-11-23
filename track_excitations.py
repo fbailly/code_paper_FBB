@@ -286,56 +286,56 @@ if __name__ == "__main__":
             sio.savemat(f"solutions/stats_rt_activation_driven{use_activation}.mat", err_dic)
         else:
             RuntimeError(f"File 'solutions/stats_rt_activation_driven{use_activation}.mat' does not exist")
-    # plt.subplot(211)
-    # plt.plot(X_est[:biorbd_model.nbQ(), :].T, 'x')
-    # plt.gca().set_prop_cycle(None)
-    # plt.plot(q_ref.T)
-    # plt.legend(labels=['Q estimate', 'Q truth'], bbox_to_anchor=(1, 1), loc='upper left', borderaxespad=0.)
-    # plt.subplot(212)
-    # plt.plot(X_est[biorbd_model.nbQ():biorbd_model.nbQ()*2, :].T, 'x')
-    # plt.gca().set_prop_cycle(None)
-    # plt.plot(dq_ref.T)
-    # plt.legend(labels=['Qdot estimate', 'Qdot truth'], bbox_to_anchor=(1, 1), loc='upper left', borderaxespad=0.)
-    # # plt.tight_layout()
-    # plt.figure('Muscles excitations')
-    # for i in range(biorbd_model.nbMuscles()):
-    #     plt.subplot(4, 5, i + 1)
-    #     # if use_N_elec:
-    #     #     plt.plot(a_ref[i, :-N_elec].T)
-    #     #     plt.plot(u_ref[i, :-N_elec].T, '--')
-    #     # else:
-    #     plt.plot(a_ref[i, :].T)
-    #     plt.plot(u_ref[i, :].T, '--')
-    #     plt.plot(U_est[i, :].T, 'k:')
-    #     plt.title(biorbd_model.muscleNames()[i].to_string())
-    # plt.legend(
-    #     labels=['a_ref', 'u_ref', 'a_est'], bbox_to_anchor=(1.05, 1), loc='upper left',
-    #     borderaxespad=0.
-    # )
-    # plt.figure('RMSE_activations')
-    # plt.figure()
-    # if use_torque:
-    #     plt.subplot(211)
-    #     plt.plot(U_est[:nbGT, :].T, 'x', label='Tau estimate')
-    #     plt.gca().set_prop_cycle(None)
-    #     plt.plot(tau.T)
-    #     plt.legend(labels=['Tau estimate', 'Tau truth'], bbox_to_anchor=(1, 1), loc='upper left', borderaxespad=0.)
-    #     plt.subplot(212)
-    # plt.plot(U_est[nbGT:, :].T, 'x')
-    # plt.gca().set_prop_cycle(None)
-    # if use_activation:
-    #     plt.plot(a_ref[:, N_elec:].T)
-    #     plt.gca().set_prop_cycle(None)
-    #     plt.plot(u_ref[:, N_elec:].T, '--')
-    # else:
-    #     plt.plot(u_ref.T)
-    # plt.legend(
-    #     labels=['Muscle excitation estimate', 'Muscle excitation truth'],
-    #     bbox_to_anchor=(1, 1),
-    #     loc='upper left', borderaxespad=0.
-    # )
+    plt.subplot(211)
+    plt.plot(X_est[:biorbd_model.nbQ(), :].T, 'x')
+    plt.gca().set_prop_cycle(None)
+    plt.plot(q_ref.T)
+    plt.legend(labels=['Q estimate', 'Q truth'], bbox_to_anchor=(1, 1), loc='upper left', borderaxespad=0.)
+    plt.subplot(212)
+    plt.plot(X_est[biorbd_model.nbQ():biorbd_model.nbQ()*2, :].T, 'x')
+    plt.gca().set_prop_cycle(None)
+    plt.plot(dq_ref.T)
+    plt.legend(labels=['Qdot estimate', 'Qdot truth'], bbox_to_anchor=(1, 1), loc='upper left', borderaxespad=0.)
     # plt.tight_layout()
-    # plt.show()
+    plt.figure('Muscles excitations')
+    for i in range(biorbd_model.nbMuscles()):
+        plt.subplot(4, 5, i + 1)
+        # if use_N_elec:
+        #     plt.plot(a_ref[i, :-N_elec].T)
+        #     plt.plot(u_ref[i, :-N_elec].T, '--')
+        # else:
+        plt.plot(a_ref[i, :].T)
+        plt.plot(u_ref[i, :].T, '--')
+        plt.plot(U_est[i, :].T, 'k:')
+        plt.title(biorbd_model.muscleNames()[i].to_string())
+    plt.legend(
+        labels=['a_ref', 'u_ref', 'a_est'], bbox_to_anchor=(1.05, 1), loc='upper left',
+        borderaxespad=0.
+    )
+    plt.figure('RMSE_activations')
+    plt.figure()
+    if use_torque:
+        plt.subplot(211)
+        plt.plot(U_est[:nbGT, :].T, 'x', label='Tau estimate')
+        plt.gca().set_prop_cycle(None)
+        plt.plot(tau.T)
+        plt.legend(labels=['Tau estimate', 'Tau truth'], bbox_to_anchor=(1, 1), loc='upper left', borderaxespad=0.)
+        plt.subplot(212)
+    plt.plot(U_est[nbGT:, :].T, 'x')
+    plt.gca().set_prop_cycle(None)
+    if use_activation:
+        plt.plot(a_ref[:, N_elec:].T)
+        plt.gca().set_prop_cycle(None)
+        plt.plot(u_ref[:, N_elec:].T, '--')
+    else:
+        plt.plot(u_ref.T)
+    plt.legend(
+        labels=['Muscle excitation estimate', 'Muscle excitation truth'],
+        bbox_to_anchor=(1, 1),
+        loc='upper left', borderaxespad=0.
+    )
+    plt.tight_layout()
+    plt.show()
     # if use_activation:
     #     ocp.save_get_data(
     #         sol, f"solutions/tracking_markers_EMG_activations_driven.bob"
