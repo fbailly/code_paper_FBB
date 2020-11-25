@@ -145,24 +145,31 @@ def warm_start_mhe(ocp, sol, use_activation=False):
     q = data[0]["q"]
     dq = data[0]["q_dot"]
     tau = []
+    exc = []
+    u = []
+    w_tau = 'tau' in data[1].keys()
     if use_activation:
         act = data[1]["muscles"]
         x = np.vstack([q, dq])
-        u = act
+        if w_tau:
+            u0 = np.vstack([tau, act])[:, 1:]
+            u = np.vstack([tau, act])
+        else:
+            u0 = act[:, 1:]
+            u = act
     else:
         act = data[0]["muscles"]
         exc = data[1]["muscles"]
         x = np.vstack([q, dq, act])
-        u = exc
-    w_tau = 'tau' in data[1].keys()
-    if w_tau:
-        tau = data[1]["tau"]
-        if use_activation:
-            u = np.vstack([tau, act])
-        else:
+        if w_tau:
+            u0 = np.vstack([tau, act])[:, 1:] # take activation as initial guess for next optimization
             u = np.vstack([tau, exc])
+        else:
+            u0 = act[:, 1:] # take activation as initial guess for next optimization
+            u = exc
+
     x0 = np.hstack((x[:, 1:], np.tile(x[:, [-1]], 1)))  # discard oldest estimate of the window, duplicates youngest
-    u0 = u[:, 1:]  # discard oldest estimate of the window
+    # u0 = u[:, :-1]
     x_out = x[:, 0]
     u_out = u[:, 0]
     return x0, u0, x_out, u_out
