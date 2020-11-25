@@ -104,7 +104,7 @@ def prepare_ocp(
 
 if __name__ == "__main__":
     use_activation = True
-    use_torque = True
+    use_torque = False
     use_ACADOS = True
     use_bash = True
     save_stats = True
@@ -115,10 +115,14 @@ if __name__ == "__main__":
 
     N_elec = 2
     T_elec = 0.02
+    N_elec = 2
+    T_elec = 0.02
     T = 8
-    Ns = 800
+    start_delay = 25
+    Ns = 800 - start_delay
+    T = T * (Ns) / 800
     final_offset = 27
-    init_offset = 15
+    init_offset = 5
     # if use_N_elec:
     #     Ns = Ns - N_elec
 
@@ -131,10 +135,10 @@ if __name__ == "__main__":
         data = pickle.load(file)
     states = data['data'][0]
     controls = data['data'][1]
-    q_ref = states['q']
-    dq_ref = states['q_dot']
-    a_ref = states['muscles']
-    u_ref = controls['muscles']
+    q_ref = states['q'][:, start_delay:]
+    dq_ref = states['q_dot'][:, start_delay:]
+    a_ref = states['muscles'][:, start_delay:]
+    u_ref = controls['muscles'][:, start_delay:]
     if use_torque:
         nbGT = biorbd_model.nbGeneralizedTorque()
     else:
@@ -195,7 +199,7 @@ if __name__ == "__main__":
     if use_activation:
         objectives.add(Objective.Lagrange.TRACK_MUSCLES_CONTROL, weight=100000, target=muscles_target_real[:, :-1])
     else:
-        objectives.add(Objective.Lagrange.TRACK_MUSCLES_CONTROL, weight=1000, target=muscles_target[:, :-1])
+        objectives.add(Objective.Lagrange.TRACK_MUSCLES_CONTROL, weight=100000, target=muscles_target[:, :-1])
 
     objectives.add(Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=10)
     objectives.add(Objective.Lagrange.TRACK_MARKERS, weight=100000000, target=markers_target[:, :, :])

@@ -105,11 +105,11 @@ if __name__ == "__main__":
     # Configuration of the problem
     biorbd_model = biorbd.Model("arm_wt_rot_scap.bioMod")
     use_torque = False
-    use_activation = True
+    use_activation = False
     use_ACADOS = True
     WRITE_STATS = False
     save_results = True
-    TRACK_EMG = True
+    TRACK_EMG = False
     plot = True
     with_low_lvl = True
     if TRACK_EMG:

@@ -104,7 +104,7 @@ def prepare_ocp(
 
 if __name__ == "__main__":
     use_activation = False
-    use_torque = True
+    use_torque = False
     use_ACADOS = True
     use_bash = True
     save_stats = True
@@ -116,9 +116,11 @@ if __name__ == "__main__":
     N_elec = 2
     T_elec = 0.02
     T = 8
-    Ns = 800
+    start_delay = 25
+    Ns = 800 - start_delay
+    T = T * (Ns) / 800
     final_offset = 27
-    init_offset = 15
+    init_offset = 5
     # if use_N_elec:
     #     Ns = Ns - N_elec
 
@@ -131,10 +133,10 @@ if __name__ == "__main__":
         data = pickle.load(file)
     states = data['data'][0]
     controls = data['data'][1]
-    q_ref = states['q']
-    dq_ref = states['q_dot']
-    a_ref = states['muscles']
-    u_ref = controls['muscles']
+    q_ref = states['q'][:, start_delay:]
+    dq_ref = states['q_dot'][:, start_delay:]
+    a_ref = states['muscles'][:, start_delay:]
+    u_ref = controls['muscles'][:, start_delay:]
     if use_torque:
         nbGT = biorbd_model.nbGeneralizedTorque()
     else:
@@ -193,7 +195,7 @@ if __name__ == "__main__":
 
     objectives = ObjectiveList()
     if use_activation:
-        objectives.add(Objective.Lagrange.TRACK_MUSCLES_CONTROL, weight=10000, target=muscles_target_real[:, :-1])
+        objectives.add(Objective.Lagrange.TRACK_MUSCLES_CONTROL, weight=100000, target=muscles_target_real[:, :-1])
     else:
         objectives.add(Objective.Lagrange.TRACK_MUSCLES_CONTROL, weight=100000, target=muscles_target[:, :-1])
 
@@ -286,56 +288,56 @@ if __name__ == "__main__":
             sio.savemat(f"solutions/stats_rt_activation_driven{use_activation}.mat", err_dic)
         else:
             RuntimeError(f"File 'solutions/stats_rt_activation_driven{use_activation}.mat' does not exist")
-    plt.subplot(211)
-    plt.plot(X_est[:biorbd_model.nbQ(), :].T, 'x')
-    plt.gca().set_prop_cycle(None)
-    plt.plot(q_ref.T)
-    plt.legend(labels=['Q estimate', 'Q truth'], bbox_to_anchor=(1, 1), loc='upper left', borderaxespad=0.)
-    plt.subplot(212)
-    plt.plot(X_est[biorbd_model.nbQ():biorbd_model.nbQ()*2, :].T, 'x')
-    plt.gca().set_prop_cycle(None)
-    plt.plot(dq_ref.T)
-    plt.legend(labels=['Qdot estimate', 'Qdot truth'], bbox_to_anchor=(1, 1), loc='upper left', borderaxespad=0.)
+    # plt.subplot(211)
+    # plt.plot(X_est[:biorbd_model.nbQ(), :].T, 'x')
+    # plt.gca().set_prop_cycle(None)
+    # plt.plot(q_ref.T)
+    # plt.legend(labels=['Q estimate', 'Q truth'], bbox_to_anchor=(1, 1), loc='upper left', borderaxespad=0.)
+    # plt.subplot(212)
+    # plt.plot(X_est[biorbd_model.nbQ():biorbd_model.nbQ()*2, :].T, 'x')
+    # plt.gca().set_prop_cycle(None)
+    # plt.plot(dq_ref.T)
+    # plt.legend(labels=['Qdot estimate', 'Qdot truth'], bbox_to_anchor=(1, 1), loc='upper left', borderaxespad=0.)
+    # # plt.tight_layout()
+    # plt.figure('Muscles excitations')
+    # for i in range(biorbd_model.nbMuscles()):
+    #     plt.subplot(4, 5, i + 1)
+    #     # if use_N_elec:
+    #     #     plt.plot(a_ref[i, :-N_elec].T)
+    #     #     plt.plot(u_ref[i, :-N_elec].T, '--')
+    #     # else:
+    #     plt.plot(a_ref[i, :].T)
+    #     plt.plot(u_ref[i, :].T, '--')
+    #     plt.plot(U_est[i, :].T, 'k:')
+    #     plt.title(biorbd_model.muscleNames()[i].to_string())
+    # plt.legend(
+    #     labels=['a_ref', 'u_ref', 'a_est'], bbox_to_anchor=(1.05, 1), loc='upper left',
+    #     borderaxespad=0.
+    # )
+    # plt.figure('RMSE_activations')
+    # plt.figure()
+    # if use_torque:
+    #     plt.subplot(211)
+    #     plt.plot(U_est[:nbGT, :].T, 'x', label='Tau estimate')
+    #     plt.gca().set_prop_cycle(None)
+    #     plt.plot(tau.T)
+    #     plt.legend(labels=['Tau estimate', 'Tau truth'], bbox_to_anchor=(1, 1), loc='upper left', borderaxespad=0.)
+    #     plt.subplot(212)
+    # plt.plot(U_est[nbGT:, :].T, 'x')
+    # plt.gca().set_prop_cycle(None)
+    # if use_activation:
+    #     plt.plot(a_ref[:, N_elec:].T)
+    #     plt.gca().set_prop_cycle(None)
+    #     plt.plot(u_ref[:, N_elec:].T, '--')
+    # else:
+    #     plt.plot(u_ref.T)
+    # plt.legend(
+    #     labels=['Muscle excitation estimate', 'Muscle excitation truth'],
+    #     bbox_to_anchor=(1, 1),
+    #     loc='upper left', borderaxespad=0.
+    # )
     # plt.tight_layout()
-    plt.figure('Muscles excitations')
-    for i in range(biorbd_model.nbMuscles()):
-        plt.subplot(4, 5, i + 1)
-        # if use_N_elec:
-        #     plt.plot(a_ref[i, :-N_elec].T)
-        #     plt.plot(u_ref[i, :-N_elec].T, '--')
-        # else:
-        plt.plot(a_ref[i, :].T)
-        plt.plot(u_ref[i, :].T, '--')
-        plt.plot(U_est[i, :].T, 'k:')
-        plt.title(biorbd_model.muscleNames()[i].to_string())
-    plt.legend(
-        labels=['a_ref', 'u_ref', 'a_est'], bbox_to_anchor=(1.05, 1), loc='upper left',
-        borderaxespad=0.
-    )
-    plt.figure('RMSE_activations')
-    plt.figure()
-    if use_torque:
-        plt.subplot(211)
-        plt.plot(U_est[:nbGT, :].T, 'x', label='Tau estimate')
-        plt.gca().set_prop_cycle(None)
-        plt.plot(tau.T)
-        plt.legend(labels=['Tau estimate', 'Tau truth'], bbox_to_anchor=(1, 1), loc='upper left', borderaxespad=0.)
-        plt.subplot(212)
-    plt.plot(U_est[nbGT:, :].T, 'x')
-    plt.gca().set_prop_cycle(None)
-    if use_activation:
-        plt.plot(a_ref[:, N_elec:].T)
-        plt.gca().set_prop_cycle(None)
-        plt.plot(u_ref[:, N_elec:].T, '--')
-    else:
-        plt.plot(u_ref.T)
-    plt.legend(
-        labels=['Muscle excitation estimate', 'Muscle excitation truth'],
-        bbox_to_anchor=(1, 1),
-        loc='upper left', borderaxespad=0.
-    )
-    plt.tight_layout()
-    plt.show()
+    # plt.show()
     # if use_activation:
     #     ocp.save_get_data(
     #         sol, f"solutions/tracking_markers_EMG_activations_driven.bob"
