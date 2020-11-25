@@ -4,6 +4,7 @@ from math import *
 from bioptim import Data
 import biorbd
 import csv
+import warnings
 
 def markers_fun(biorbd_model):
     qMX = MX.sym('qMX', biorbd_model.nbQ())
@@ -190,5 +191,8 @@ def convert_txt_output_to_list(file, nbco, nbmark, nbemg, nbtries):
         fdel = csv.reader(f, delimiter=';', lineterminator='\n')
         for line in fdel:
             if line[0] == '7':
-                conv_list[int(line[1])][int(line[2])][int(line[3])][int(line[4])].append(line[5])
+                try:
+                    conv_list[int(line[1])][int(line[2])][int(line[3])][int(line[4])].append(line[5])
+                except:
+                    warnings.warn(f'line {line} ignored')
     return conv_list

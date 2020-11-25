@@ -18,13 +18,12 @@ biorbd_model = biorbd.Model("arm_wt_rot_scap.bioMod")
 T = 8
 Ns = 100
 motion = "REACH2"
-nb_try = 30
+nb_try = 5
 marker_noise_lvl = [0, 0.002, 0.005, 0.01]
-EMG_noise_lvl = [0, 0.6, 1, 1.5, 0]
-# EMG_noise_lvl = [0, 0]
-EMG_lvl_label = ['track, n_lvl=0', 'track, n_lvl=0.6', 'track, n_lvl=1',
-                 'track, n_lvl=1.5', 'track, n_lvl=2', 'track, n_lvl=2.5', 'minimize']
-# EMG_lvl_label = ['track', 'minimize']
+# EMG_noise_lvl = [0, 1, 1.5, 2, 0]
+EMG_noise_lvl = [0, 0]
+# EMG_lvl_label = ['track, n_lvl=0', 'track, n_lvl=1', 'track, n_lvl=1.5', 'track, n_lvl=2', 'minimize']
+EMG_lvl_label = ['track', 'minimize']
 states_controls = ['q', 'dq', 'act', 'exc']
 co_lvl = 4
 co_lvl_label = ['None', 'low', 'mid', 'high']
@@ -49,17 +48,17 @@ marker_n_lvl_df = ([marker_noise_lvl[0]]*len(EMG_noise_lvl)*4*nb_try
                    + [marker_noise_lvl[2]]*len(EMG_noise_lvl)*4*nb_try
                    + [marker_noise_lvl[3]]*len(EMG_noise_lvl)*4*nb_try)*co_lvl
 
-EMG_n_lvl_df = ([EMG_lvl_label[0]]*4*nb_try + [EMG_lvl_label[1]]*4*nb_try
-                + [EMG_lvl_label[2]]*4*nb_try + [EMG_lvl_label[3]]*4*nb_try
-                + [EMG_lvl_label[4]]*4*nb_try)*co_lvl*len(marker_noise_lvl)
-
-EMG_n_lvl_stats = (['track']*4*nb_try + ['track']*4*nb_try
-                + ['track']*4*nb_try + ['track']*4*nb_try
-                + ['minimize']*4*nb_try)*co_lvl*len(marker_noise_lvl)
-
-# EMG_n_lvl_df = ([EMG_lvl_label[0]]*4*nb_try + [EMG_lvl_label[1]]*4*nb_try)*co_lvl*len(marker_noise_lvl)
+# EMG_n_lvl_df = ([EMG_lvl_label[0]]*4*nb_try + [EMG_lvl_label[1]]*4*nb_try
+#                 + [EMG_lvl_label[2]]*4*nb_try + [EMG_lvl_label[3]]*4*nb_try
+#                 + [EMG_lvl_label[4]]*4*nb_try)*co_lvl*len(marker_noise_lvl)
 #
-# EMG_n_lvl_stats = (['track']*4*nb_try + ['minimize']*4*nb_try)*co_lvl*len(marker_noise_lvl)
+# EMG_n_lvl_stats = (['track']*4*nb_try + ['track']*4*nb_try
+#                 + ['track']*4*nb_try + ['track']*4*nb_try
+#                 + ['minimize']*4*nb_try)*co_lvl*len(marker_noise_lvl)
+
+EMG_n_lvl_df = ([EMG_lvl_label[0]]*4*nb_try + [EMG_lvl_label[1]]*4*nb_try)*co_lvl*len(marker_noise_lvl)
+
+EMG_n_lvl_stats = (['track']*4*nb_try + ['minimize']*4*nb_try)*co_lvl*len(marker_noise_lvl)
 
 states_controls_df = ([states_controls[0]]*nb_try + [states_controls[1]]*nb_try + [states_controls[2]]*nb_try
                       + [states_controls[3]]*nb_try)*co_lvl*len(marker_noise_lvl)*len(EMG_noise_lvl)
@@ -83,7 +82,7 @@ for co in range(co_lvl):
             N = mat_content['N_tot']
             NS = int(N - Nmhe)
 
-            ratio = 4
+            ratio = int(mat_content['rt_ratio'])
             X_est = mat_content['X_est']
             U_est = mat_content['U_est']
             q_ref = mat_content['x_sol'][:biorbd_model.nbQ(), ::ratio][:, :-Nmhe]
