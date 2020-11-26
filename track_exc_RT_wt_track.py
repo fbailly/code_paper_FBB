@@ -117,7 +117,7 @@ if __name__ == "__main__":
             fold = "solutions/w_track_emg_rt_act/"
         else:
             if with_low_lvl:
-                fold = "solutions/w_track_emg_rt_exc_low_lvl/"
+                fold = "solutions/w_track_emg_rt_exc_low_weight/"
             else:
                 fold = "solutions/w_track_emg_rt_exc/"
     else:
@@ -125,7 +125,7 @@ if __name__ == "__main__":
             fold = "solutions/wt_track_emg_rt_act/"
         else:
             if with_low_lvl:
-                fold = "solutions/wt_track_emg_rt_exc_low_lvl/"
+                fold = "solutions/wt_track_emg_rt_exc_low_weight/"
             else:
                 fold = "solutions/wt_track_emg_rt_exc/"
 

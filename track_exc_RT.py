@@ -110,22 +110,22 @@ if __name__ == "__main__":
     WRITE_STATS = False
     save_results = True
     TRACK_EMG = True
-    plot = True
-    with_low_lvl = True
+    plot = False
+    with_low_weight = True
     if TRACK_EMG:
         if use_activation:
             fold = "solutions/w_track_emg_rt_act/"
         else:
-            if with_low_lvl:
-                fold = "solutions/w_track_emg_rt_exc_low_lvl/"
+            if with_low_weight:
+                fold = "solutions/w_track_emg_rt_exc_low_weight/"
             else:
                 fold = "solutions/w_track_emg_rt_exc/"
     else:
         if use_activation:
             fold = "solutions/wt_track_emg_rt_act/"
         else:
-            if with_low_lvl:
-                fold = "solutions/wt_track_emg_rt_exc_low_lvl/"
+            if with_low_weight:
+                fold = "solutions/wt_track_emg_rt_exc_low_weight/"
             else:
                 fold = "solutions/wt_track_emg_rt_exc/"
 
@@ -219,7 +219,7 @@ if __name__ == "__main__":
         f.write("Ns_mhe;  Co_lvl;  Marker_noise;  EMG_noise;  nb_try;  iter\n")
         f.close()
     # Loop for each co-contraction level
-    for co in range(3, nb_co_lvl):
+    for co in range(0, nb_co_lvl):
         # get initial guess
         motion = 'REACH2'
         with open(
@@ -248,15 +248,13 @@ if __name__ == "__main__":
         #     x_ref_wt_noise = np.hstack([q_ref, dq_ref, a_ref])
 
         # Loop for marker and EMG noise
-        marker_range = range(3, len(marker_noise_lvl))
+        marker_range = range(0, len(marker_noise_lvl))
         for marker_lvl in marker_range:
-        # for marker_lvl in range(3, 4):
             if TRACK_EMG is not True:
                 emg_range = range(0, 1)
             else:
                 emg_range = range(0, len(EMG_noise_lvl))
             for EMG_lvl in emg_range:
-            # for EMG_lvl in range(2, 3):
                 get_markers = markers_fun(biorbd_model)
                 markers_target = np.zeros((3, biorbd_model.nbMarkers(), Ns + 1))
                 for i in range(Ns + 1):
@@ -324,14 +322,16 @@ if __name__ == "__main__":
                     # Update objectives functions
                     objectives = ObjectiveList()
                     if TRACK_EMG:
-                        if with_low_lvl:
+                        if with_low_weight:
                             if EMG_lvl == 0:
-                                w_marker = 1000000
-                            elif EMG_lvl == 1:
-                                w_marker = 100000000
+                                w_marker = 10000000
+                                w_control = 1000000
+                            elif EMG_lvl >= 1:
+                                w_marker = 10000000
+                                w_control = 10000
                         else:
                             w_marker = 1000000000
-                        w_control = 1000000
+                            w_control = 1000000
                         w_torque = 100000000
                         objectives.add(Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=w_control,
                                        target=muscles_target[nbGT:, 0:Ns_mhe*rt_ratio:rt_ratio],
@@ -343,7 +343,7 @@ if __name__ == "__main__":
                         # else:
                         objectives.add(Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=10)
                     else:
-                        if with_low_lvl:
+                        if with_low_weight:
                             w_marker = 1000000
                         else:
                             w_marker = 10000000
