@@ -5,6 +5,9 @@ from bioptim import Data
 import biorbd
 import csv
 import warnings
+import scipy
+import scipy.fftpack
+
 
 def markers_fun(biorbd_model):
     qMX = MX.sym('qMX', biorbd_model.nbQ())
@@ -88,6 +91,7 @@ def compute_err_mhe(init_offset, final_offset, Ns_mhe, X_est, U_est, Ns, model, 
 
     return err
 
+
 def compute_err(init_offset, final_offset, X_est, U_est, Ns, model, q, dq, tau,
                 activations, excitations, nbGT, use_activation=False):
     model = model
@@ -140,6 +144,7 @@ def compute_err(init_offset, final_offset, X_est, U_est, Ns, model, q, dq, tau,
 
     return err
 
+
 def warm_start_mhe(ocp, sol, use_activation=False):
     data = Data.get_data(ocp, sol)
     q = data[0]["q"]
@@ -190,8 +195,6 @@ def get_MHE_time_lenght(Ns_mhe, use_activation=False):
     return times_lenght[Ns_mhe-2]
 
 
-
-
 def convert_txt_output_to_list(file, nbco, nbmark, nbemg, nbtries):
     conv_list = [[[[[] for i in range(nbtries)] for j in range(nbemg)] for k in range(nbmark)] for l in range(nbco)]
     with open(file) as f:
@@ -203,3 +206,47 @@ def convert_txt_output_to_list(file, nbco, nbmark, nbemg, nbtries):
                 except:
                     warnings.warn(f'line {line} ignored')
     return conv_list
+
+
+def generate_noise(model, q, excitations, marker_noise_level, EMG_noise_level):
+    biorbd_model = model
+    q_sol = q
+    u_co = excitations
+    EMG_fft = scipy.fftpack.fft(u_co)
+    EMG_no_noise = scipy.fftpack.ifft(EMG_fft)
+    EMG_fft_noise = EMG_fft
+    for k in range(biorbd_model.nbMuscles()):
+        # EMG_fft_noise[k, 0] += np.random.normal(0, (np.real(EMG_fft_noise[k, 0]*0.2)))
+        for i in range(1, 17, 3):
+            if i in [4, 8]:
+                rand_noise = np.random.normal(np.real(EMG_fft[k, i]) / i * EMG_noise_level,
+                                              np.abs(np.real(EMG_fft[k, i]) * 0.2 * EMG_noise_level))
+
+            elif i % 2 == 0:
+                rand_noise = np.random.normal(2 * np.real(EMG_fft[k, i]) / i * EMG_noise_level,
+                                              np.abs(np.real(EMG_fft[k, i]) * 0.2 * EMG_noise_level))
+
+            else:
+                rand_noise = np.random.normal(2 * np.real(EMG_fft[k, i]) / i * EMG_noise_level,
+                                              np.abs(np.real(EMG_fft[k, i]) * EMG_noise_level * 5))
+            EMG_fft_noise[k, i] += rand_noise
+            EMG_fft_noise[k, -i] += rand_noise
+    EMG_noise = np.real(scipy.fftpack.ifft(EMG_fft_noise))
+
+    for i in range(biorbd_model.nbMuscles()):
+        for j in range(EMG_noise.shape[1]):
+            if EMG_noise[i, j] < 0:
+                EMG_noise[i, j] = 0
+
+    # Ref
+    n_mark = biorbd_model.nbMarkers()
+    for i in range(n_mark):
+        noise_position = MX(np.random.normal(0, marker_noise_level, 3)) + biorbd_model.marker(i).to_mx()
+        biorbd_model.marker(i).setPosition(biorbd.Vector3d(noise_position[0], noise_position[1], noise_position[2]))
+
+    get_markers = markers_fun(biorbd_model)
+    markers_target_noise = np.zeros((3, biorbd_model.nbMarkers(), q_sol.shape[1]))
+    for i in range(q_sol.shape[1]):
+        markers_target_noise[:, :, i] = get_markers(q_sol[:, i])
+
+    return markers_target_noise, EMG_noise
