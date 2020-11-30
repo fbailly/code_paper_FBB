@@ -1,13 +1,8 @@
-import biorbd
 from time import time
-import numpy as np
-from casadi import MX, Function, horzcat
-from math import *
 import matplotlib.pyplot as plt
 import pickle
 import scipy.io as sio
 import sys
-from generate_data_noise_funct import generate_noise
 import os
 from utils import *
 
@@ -328,7 +323,7 @@ if __name__ == "__main__":
                                 w_control = 1000000
                             elif EMG_lvl >= 1:
                                 w_marker = 10000000
-                                w_control = 10000
+                                w_control = 1000000
                         else:
                             w_marker = 1000000000
                             w_control = 1000000
@@ -356,18 +351,18 @@ if __name__ == "__main__":
                     objectives.add(Objective.Lagrange.MINIMIZE_MARKERS, weight=w_marker,
                                    target=markers_target[:, :, 0:(Ns_mhe+1)*rt_ratio:rt_ratio])
                     objectives.add(
-                        Objective.Lagrange.MINIMIZE_STATE, weight=10, states_idx=np.array(range(biorbd_model.nbQ())))
+                        Objective.Lagrange.MINIMIZE_STATE, weight=10, index=np.array(range(biorbd_model.nbQ())))
                     objectives.add(Objective.Lagrange.MINIMIZE_STATE, weight=10,
-                                   states_idx=np.array(range(biorbd_model.nbQ(), biorbd_model.nbQ() * 2)))
+                                   index=np.array(range(biorbd_model.nbQ(), biorbd_model.nbQ() * 2)))
                     if use_activation is not True:
                         objectives.add(
                             Objective.Lagrange.MINIMIZE_STATE,
                             weight=10,
-                            states_idx=np.array(
+                            index=np.array(
                                 range(biorbd_model.nbQ() * 2, biorbd_model.nbQ() * 2 + biorbd_model.nbMuscles()))
                         )
                     ocp.update_objectives(objectives)
-                    if co == 0 and marker_lvl == 0 and EMG_lvl == 0 and tries == 0:
+                    if co == 3 and marker_lvl == 0 and EMG_lvl == 0 and tries == 0:
                         sol = ocp.solve(solver=Solver.ACADOS,
                                         show_online_optim=False,
                                         solver_options={
@@ -388,6 +383,7 @@ if __name__ == "__main__":
                                             "nlp_solver_tol_eq": 1e-4,
                                             "nlp_solver_tol_stat": 1e-4,
                                             "print_level": 0,
+                                            "nlp_solver_max_iter": 15
                                         })
                     if sol['status'] != 0:
                         if TRACK_EMG:
@@ -444,14 +440,14 @@ if __name__ == "__main__":
                         objectives.add(Objective.Lagrange.MINIMIZE_MARKERS, weight=w_marker,
                                        target=markers_target[:, :, iter*rt_ratio:(Ns_mhe+iter+1)*rt_ratio:rt_ratio])
                         objectives.add(
-                            Objective.Lagrange.MINIMIZE_STATE, weight=1, states_idx=np.array(range(biorbd_model.nbQ())))
+                            Objective.Lagrange.MINIMIZE_STATE, weight=1, index=np.array(range(biorbd_model.nbQ())))
                         objectives.add(Objective.Lagrange.MINIMIZE_STATE, weight=10,
-                                       states_idx=np.array(range(biorbd_model.nbQ(), biorbd_model.nbQ() * 2)))
+                                       index=np.array(range(biorbd_model.nbQ(), biorbd_model.nbQ() * 2)))
                         if use_activation is not True:
                             objectives.add(
                                 Objective.Lagrange.MINIMIZE_STATE,
                                 weight=1,
-                                states_idx=np.array(
+                                index=np.array(
                                     range(biorbd_model.nbQ() * 2, biorbd_model.nbQ() * 2 + biorbd_model.nbMuscles()))
                             )
                         ocp.update_objectives(objectives)
@@ -523,8 +519,6 @@ if __name__ == "__main__":
                             plt.subplot(3, 2, i + 1)
                             plt.plot(X_est[i, :], 'x')
                             plt.plot(q_ref[i, 0:Ns+1:rt_ratio])
-                            # plt.plot(muscles_target[i, :], 'k--')
-                            # plt.title(biorbd_model.muscleNames()[i].to_string())
                         plt.legend(labels=['q_est', 'q_ref'], bbox_to_anchor=(1.05, 1), loc='upper left',
                                    borderaxespad=0.)
                         plt.figure('qdot')
@@ -532,8 +526,6 @@ if __name__ == "__main__":
                             plt.subplot(3, 2, i-nbQ + 1)
                             plt.plot(X_est[i, :], 'x')
                             plt.plot(dq_ref[i-nbQ, 0:Ns + 1:rt_ratio])
-                            # plt.plot(muscles_target[i, :], 'k--')
-                            # plt.title(biorbd_model.muscleNames()[i].to_string())
                         plt.legend(labels=['q_est', 'q_ref'], bbox_to_anchor=(1.05, 1), loc='upper left',
                                    borderaxespad=0.)
                         plt.figure('Tau')
@@ -542,9 +534,9 @@ if __name__ == "__main__":
                             plt.plot(U_est[i, :], 'x')
                             plt.plot(u_ref[i, 0:Ns + 1:rt_ratio])
                             plt.plot(muscles_target[i, :], 'k--')
-                            # plt.title(biorbd_model.muscleNames()[i].to_string())
                         plt.legend(labels=['Tau_est', 'tau_ref'], bbox_to_anchor=(1.05, 1), loc='upper left',
                                    borderaxespad=0.)
+
                         plt.figure('Muscles excitations')
                         for i in range(biorbd_model.nbMuscles()):
                             plt.subplot(4, 5, i + 1)
@@ -583,11 +575,8 @@ if __name__ == "__main__":
                         plt.xlabel("Time")
                         plt.ylabel("Markers Position")
                         plt.show()
-                    # print()
 
                 # Write stats file for all tries
-                # T_mhe_new = sum(T_mhe_tries)/nb_try
-                # T_tot = sum(T_tot_tries) / nb_try
                 err_dic = {"err_tries": err_tries, 'force_est': force_est, 'force_ref': force_ref}
                 if WRITE_STATS:
                     if os.path.isfile(f"solutions/stats_rt_activation_driven{use_activation}.mat"):
@@ -627,60 +616,3 @@ if __name__ == "__main__":
                             f"{fold}track_mhe_wt_EMG_excitation_driven_co_lvl{co}_noise_lvl_{marker_noise_lvl[marker_lvl]}_{EMG_noise_lvl[EMG_lvl]}.mat",
                             dic
                         )
-
-# plt.subplot(211)
-# for est, name in zip(X_est[:biorbd_model.nbQ(), :], biorbd_model.nameDof()):
-#     plt.plot(est, 'x', label=name.to_string() + '_q_est')
-# plt.gca().set_prop_cycle(None)
-# for tru, name in zip(q_ref, biorbd_model.nameDof()):
-#     plt.plot(tru, label=name.to_string() + '_q_tru')
-# plt.legend()
-#
-# plt.subplot(212)
-# for est, name in zip(X_est[biorbd_model.nbQ():biorbd_model.nbQ() * 2, :], biorbd_model.nameDof()):
-#     plt.plot(est, 'x', label=name.to_string() + '_qdot_est')
-# plt.gca().set_prop_cycle(None)
-# for tru, name in zip(dq_ref, biorbd_model.nameDof()):
-#     plt.plot(tru, label=name.to_string() + '_qdot_tru')
-# plt.legend()
-# plt.tight_layout()
-#
-# if use_torque:
-#     plt.figure()
-#     plt.subplot(211)
-#     for est, name in zip(U_est[:nbGT, :], biorbd_model.nameDof()):
-#         plt.plot(est, 'x', label=name.to_string() + '_tau_est')
-#     plt.gca().set_prop_cycle(None)
-#     for tru, name in zip(tau, biorbd_model.nameDof()):
-#         plt.plot(tru, label=name.to_string() + '_tau_tru')
-#     plt.legend()
-#     plt.subplot(212)
-#
-# plt.figure('Muscles excitations')
-# for i in range(biorbd_model.nbMuscles()):
-#     plt.subplot(4, 5, i + 1)
-#     plt.plot(U_est[nbGT + i, :])
-#     plt.plot(u_ref[i, :], c='red')
-#     plt.plot(muscles_target[i, :], 'k--')
-#     plt.title(biorbd_model.muscleNames()[i].to_string())
-# plt.legend(labels=['u_est', 'u_init', 'u_with_noise'], bbox_to_anchor=(1.05, 1), loc='upper left',
-#            borderaxespad=0.)
-# # plt.tight_layout()
-#
-# n_mark = biorbd_model.nbMarkers()
-# get_markers = markers_fun(biorbd_model)
-# markers = np.zeros((3, biorbd_model.nbMarkers(), q_ref.shape[1]))
-# for i in range(q_ref.shape[1]):
-#     markers[:, :, i] = get_markers(q_ref[:, i])
-# markers_est = np.zeros((3, biorbd_model.nbMarkers(), X_est.shape[1]))
-# for i in range(X_est.shape[1]):
-#     markers_est[:, :, i] = get_markers(X_est[:biorbd_model.nbQ(), i])
-# plt.figure("Markers")
-# for i in range(markers_target.shape[1]):
-#     plt.plot(markers_target[:, i, :].T, "k")
-#     plt.plot(markers[:, i, :].T, "r--")
-#     plt.plot(markers_est[:, i, :].T, "b")
-# plt.xlabel("Time")
-# plt.ylabel("Markers Position")
-# # plt.show()
-# print()

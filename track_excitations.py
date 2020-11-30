@@ -1,10 +1,5 @@
-import biorbd
 from time import time
-import numpy as np
-from casadi import MX, Function
-import matplotlib.pyplot as plt
 import pickle
-import sys
 from utils import *
 
 from bioptim import (
@@ -119,7 +114,7 @@ if __name__ == "__main__":
     start_delay = 25
     Ns = 800 - start_delay
     T = T * (Ns) / 800
-    final_offset = 27
+    final_offset = 30
     init_offset = 5
     # if use_N_elec:
     #     Ns = Ns - N_elec
@@ -128,7 +123,7 @@ if __name__ == "__main__":
     i = '0'
     biorbd_model = biorbd.Model("arm_wt_rot_scap.bioMod")
     with open(
-            f"solutions/sim_ac_{int(T * 1000)}ms_{Ns}sn_{motion}_co_level_{i}.bob", 'rb'
+            f"solutions/sim_ac_8000ms_800sn_{motion}_co_level_{i}.bob", 'rb'
     ) as file:
         data = pickle.load(file)
     states = data['data'][0]
@@ -200,11 +195,11 @@ if __name__ == "__main__":
         objectives.add(Objective.Lagrange.TRACK_MUSCLES_CONTROL, weight=100000, target=muscles_target[:, :-1])
 
     objectives.add(Objective.Lagrange.TRACK_MARKERS, weight=100000000, target=markers_target[:, :, :])
-    objectives.add(Objective.Lagrange.MINIMIZE_STATE, weight=1, states_idx=np.array(range(nbQ)))
-    objectives.add(Objective.Lagrange.MINIMIZE_STATE, weight=10, states_idx=np.array(range(nbQ, nbQ * 2)))
+    objectives.add(Objective.Lagrange.MINIMIZE_STATE, weight=1, index=np.array(range(nbQ)))
+    objectives.add(Objective.Lagrange.MINIMIZE_STATE, weight=10, index=np.array(range(nbQ, nbQ * 2)))
     if use_activation is not True:
         objectives.add(
-            Objective.Lagrange.MINIMIZE_STATE, weight=1, states_idx=np.array(range(nbQ * 2, nbQ * 2 + nbMT))
+            Objective.Lagrange.MINIMIZE_STATE, weight=1, index=np.array(range(nbQ * 2, nbQ * 2 + nbMT))
         )
     if use_torque:
         objectives.add(Objective.Lagrange.MINIMIZE_TORQUE, weight=100000000)
