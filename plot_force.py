@@ -1,14 +1,8 @@
-import pickle
-import bioviz
-import matplotlib.pyplot as plt
 import biorbd
 import scipy.io as sio
 import numpy as np
-import csv
-import pandas as pd
 import seaborn
-from matplotlib.colors import LogNorm
-from casadi import MX, Function, vertcat
+from casadi import MX, Function
 from math import *
 
 def muscles_forces(q, qdot, act, controls, model):
