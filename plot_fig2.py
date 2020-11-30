@@ -7,8 +7,9 @@ use_noise = False
 use_log = True
 import seaborn
 
-nb_try = 3
+nb_try = 1
 matcontent = sio.loadmat("solutions/stats_rt_activation_drivenTrue.mat")
+# matcontent = sio.loadmat("/home/amedeo/Documents/programmation/code_paper_FBB/solutions/w_track_emg_rt_exc/track_mhe_w_EMG_excitation_driven_co_lvl0_noise_lvl_0_0.mat")
 err_ac = matcontent['err_tries']
 err_ac_mhe = err_ac[:-1, :].reshape(-1, nb_try, 10)
 err_ac_full = err_ac[-1, :].reshape(1, 10)
@@ -31,6 +32,7 @@ if use_log:
     # err_std_muscles_ac = np.log10(err_std_ac[:, 7])
     err_markers_ac = np.log10(err_mean_ac_full[:, 8])
     # err_std_markers_ac = np.log10(err_std_ac[:, 8])
+    err_force_ac = np.log10(err_mean_ac_full[:, 9])
 else:
     err_q_ac = (err_mean_ac_full[:, 4])
     # err_std_q_ac = (err_std_ac[:, 4])
@@ -41,7 +43,7 @@ else:
     # err_std_muscles_ac = (err_std_ac[:, 7])
     err_markers_ac = (err_mean_ac_full[:, 8])
     # err_std_markers_ac = (err_std_ac[:, 8])
-nb_try = 3
+    err_force_ac = (err_mean_ac_full[:, 9])
 matcontent = sio.loadmat("solutions/stats_rt_activation_drivenFalse.mat")
 err_ex = matcontent['err_tries']
 err_ex_mhe = err_ex[:-1, :].reshape(-1, nb_try, 10)
@@ -65,6 +67,7 @@ if use_log:
     # err_std_muscles_ex = np.log10(err_std_ex[1:, 7])
     err_markers_ex = np.log10(err_mean_ex_full[:, 8])
     # err_std_markers_ex = np.log10(err_std_ex[:, 8])
+    err_force_aex = np.log10(err_mean_ex_full[:, 9])
 else:
     err_q_ex = (err_mean_ex_full[:, 4])
     # err_std_q_ex = (err_std_ex[:, 4])
@@ -75,6 +78,7 @@ else:
     # err_std_muscles_ex = (err_std_ex[:, 7])
     err_markers_ex = (err_mean_ex_full[:, 8])
     # err_std_markers_ex = (err_std_ex[:, 8])
+    err_force_aex = np.log10(err_mean_ex_full[:, 9])
 
 # seaborn.set_style("whitegrid")
 seaborn.color_palette()
