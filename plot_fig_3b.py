@@ -7,9 +7,8 @@ use_noise = False
 use_log = True
 import seaborn
 
-nb_try = 1
+nb_try = 100
 matcontent = sio.loadmat("solutions/stats_rt_activation_drivenTrue.mat")
-# matcontent = sio.loadmat("/home/amedeo/Documents/programmation/code_paper_FBB/solutions/w_track_emg_rt_exc/track_mhe_w_EMG_excitation_driven_co_lvl0_noise_lvl_0_0.mat")
 err_ac = matcontent['err_tries']
 err_ac_mhe = err_ac[:-1, :].reshape(-1, nb_try, 10)
 err_ac_full = err_ac[-1, :].reshape(1, 10)
@@ -44,6 +43,7 @@ else:
     err_markers_ac = (err_mean_ac_full[:, 8])
     # err_std_markers_ac = (err_std_ac[:, 8])
     err_force_ac = (err_mean_ac_full[:, 9])
+
 matcontent = sio.loadmat("solutions/stats_rt_activation_drivenFalse.mat")
 err_ex = matcontent['err_tries']
 err_ex_mhe = err_ex[:-1, :].reshape(-1, nb_try, 10)
@@ -134,10 +134,6 @@ fig.set_xticks(range(len(Nmhe_ac)-1))
 # fig.set_xticklabels()
 fig.set_xticklabels([])
 plt.yticks(fontsize=x_y_ticks)
-# plt.ylabel('dq log err.', fontsize=x_y_label_size)
-
-# plt.xlabel('Size of MHE window')
-# plt.legend(bbox_to_anchor=(1, 1), loc='upper left', borderaxespad=0.)
 
 fig = plt.subplot(423)
 plt.title('Muscles control')

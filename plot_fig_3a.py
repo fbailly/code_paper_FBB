@@ -7,7 +7,7 @@ import seaborn
 use_torque = False
 use_noise = False
 
-nb_try = 3
+nb_try = 100
 matcontent = sio.loadmat("solutions/stats_rt_activation_drivenTrue.mat")
 err_ac = matcontent['err_tries']
 err_ac_mhe = err_ac[:-1, :].reshape(-1, nb_try, 10)
@@ -21,7 +21,7 @@ time_tot_ac = (err_mean_ac_full[:, 2])
 time_ac = (err_mean_ac_full[:, 3])
 time_std_ac = err_std_ac[:, 3]
 time_mean_ac = (err_mean_ac[:, 3])
-
+nb_try = 100
 matcontent = sio.loadmat("solutions/stats_rt_activation_drivenFalse.mat")
 err_ex = matcontent['err_tries']
 err_ex_mhe = err_ex[:-1, :].reshape(-1, nb_try, 10)
