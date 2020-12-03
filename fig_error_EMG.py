@@ -2,6 +2,7 @@ import seaborn
 import matplotlib.pyplot as plt
 import pickle
 from utils import *
+import matplotlib.ticker as ticker
 
 biorbd_model = biorbd.Model("arm_wt_rot_scap.bioMod")
 # Variable of the problem
@@ -9,7 +10,7 @@ T = 8
 start_delay = 25
 Ns = 800 - start_delay
 T = T * (Ns) / 800
-
+final_offset = 5
 tau_init = 0
 muscle_init = 0.5
 nbMT = biorbd_model.nbMuscleTotal()
@@ -41,7 +42,7 @@ if w_tau:
     tau = controls['tau']
 else:
     tau = np.zeros((nbGT, Ns + 1))
-nb_try = 30
+nb_try = 1
 EMG_noise = np.ndarray((nb_try, len(EMG_noise_lvl), nbMT, Ns+1))
 # Loop for marker and EMG noise
 for tries in range(nb_try):
@@ -64,33 +65,47 @@ for tries in range(nb_try):
                     biorbd_model, q_ref, u_ref, marker_noise_lvl[marker_lvl], EMG_noise_lvl[EMG_lvl]
                 )[1]
 
-t = np.linspace(0, T, Ns+1)
+t = np.linspace(0, T, Ns+1-final_offset)
 seaborn.set_style("whitegrid")
 seaborn.color_palette()
 
 mean_emg = np.real(EMG_noise).mean(axis=0)
 std_emg = np.real(EMG_noise).std(axis=0)
-
+minors = np.linspace(0, 1, 2)
 fig = plt.figure("Muscles controls")
 plt.gcf().subplots_adjust(left=0.06, right=0.99, wspace=0.25, hspace=0.2)
-
+plt.gca().yaxis.set_major_formatter(ticker.StrMethodFormatter('{x:,.3f}'))
+plt.gca().yaxis.set_major_locator(ticker.FixedLocator(minors))
+emg_lvl = ['low', 'mid', 'high']
 for i in range(biorbd_model.nbMuscles()):
     fig = plt.subplot(4, 5, i + 1)
     if i in [14, 15, 16, 17, 18]:
         plt.xlabel('Time(s)')
-
+        plt.gca().yaxis.set_major_formatter(ticker.StrMethodFormatter('{x:,.3f}'))
     else:
         fig.set_xticklabels([])
     if i in [0, 5, 10, 15]:
-        plt.ylabel('Simulated EMG')
+        plt.ylabel('EMG to track')
+        plt.gca().yaxis.set_major_formatter(ticker.StrMethodFormatter('{x:,.3f}'))
 
     if i == 18:
-        for k in range(len(EMG_noise_lvl)):
-            plt.plot(t, mean_emg[k, i, :], label=f'EMG noise level {k}')
-            # plt.plot(t, u_ref[i, :])
+        for k in range(1, len(EMG_noise_lvl)):
+            plt.plot(t, mean_emg[k, i, :-final_offset], label=f'EMG noise level: {emg_lvl[k-1]}')
+        plt.gca().yaxis.set_major_formatter(ticker.StrMethodFormatter('{x:,.3f}'))
+        # plt.gca().yaxis.set_major_locator(ticker.MultipleLocator(0.5))
     else:
-        for k in range(len(EMG_noise_lvl)):
-            plt.plot(t, mean_emg[k, i, :], label=f'EMG noise level {k}')
+        for k in range(1, len(EMG_noise_lvl)):
+            plt.plot(t, mean_emg[k, i, :-final_offset], label=f'EMG noise level: {emg_lvl[k-1]}')
+        plt.gca().yaxis.set_major_formatter(ticker.StrMethodFormatter('{x:,.3f}'))
     plt.title(muscles_names[i])
-plt.legend(bbox_to_anchor=(1.05, 0.80),loc='upper left', frameon=False)
+
+for i in range(biorbd_model.nbMuscles()):
+    fig = plt.subplot(4, 5, i + 1)
+    if i == 18:
+        for k in range(0, 1):
+            plt.plot(t, mean_emg[k, i, :-final_offset], 'red', label=f'Reference')
+    else:
+        for k in range(0, 1):
+            plt.plot(t, mean_emg[k, i, :-final_offset], 'red', label=f'Reference')
+plt.legend(bbox_to_anchor=(1.05, 0.80), loc='upper left', frameon=False)
 plt.show()
