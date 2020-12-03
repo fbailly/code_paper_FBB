@@ -23,7 +23,7 @@ def muscles_forces(q, qdot, act, controls, model, use_activation=False):
         else:
             muscles_states[k].setExcitation(controls[k])
             muscles_states[k].setActivation(act[k])
-    # muscles_tau = model.muscularJointTorque(muscles_states, True,  q, qdot).to_mx()
+    # muscles_tau.append(model.muscularJointTorque(muscles_states, q, qdot).to_mx())
     muscles_force = model.muscleForces(muscles_states, q, qdot).to_mx()
     return muscles_force
 
@@ -130,7 +130,7 @@ def compute_err(init_offset, final_offset, X_est, U_est, Ns, model, q, dq, tau,
     for i in range(model.nbMuscles()):
         for j in range(Ns):
             force_est[i, j] = get_force(
-                X_est[:model.nbQ(), j], X_est[model.nbQ():model.nbQ() * 2, j], a_est[:, i],
+                X_est[:model.nbQ(), j], X_est[model.nbQ():model.nbQ() * 2, j], a_est[:, j],
                 U_est[nbGT:, j]
             )[i, :]
 
