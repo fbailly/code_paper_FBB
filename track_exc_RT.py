@@ -103,10 +103,11 @@ if __name__ == "__main__":
     use_activation = False
     use_ACADOS = True
     WRITE_STATS = False
-    save_results = True
+    save_status = False
+    save_results = False
     TRACK_EMG = True
-    plot = False
-    with_low_weight = True
+    plot = True
+    with_low_weight = False
     if TRACK_EMG:
         if use_activation:
             fold = "solutions/w_track_emg_rt_act/"
@@ -124,10 +125,11 @@ if __name__ == "__main__":
             else:
                 fold = "solutions/wt_track_emg_rt_exc/"
 
-    use_noise = True
-    use_co = True
+    fold = "solutions/"
+    use_noise = False
+    use_co = False
     use_bash = False
-    use_try = True
+    use_try = False
     use_N_elec = False
     if use_activation:
         use_N_elec = True
@@ -142,7 +144,7 @@ if __name__ == "__main__":
     final_offset = 30
     init_offset = 5
 
-    Ns_mhe = 7
+    Ns_mhe = 16
     if use_bash:
         Ns_mhe = int(sys.argv[1])
 
@@ -151,7 +153,7 @@ if __name__ == "__main__":
                         3, 3, 3,
                         5, 5,
                         6, 6, 6, 6, 6, 6,
-                        6, 8, 8, 8,
+                        1, 8, 8, 8,
                         9, 9, 9]
     else:
         rt_ratio_tot = [2, 2, 2, 3, 3, 3, 4, 4,
@@ -205,11 +207,11 @@ if __name__ == "__main__":
     # Build the graph
     ocp = prepare_ocp(biorbd_model=biorbd_model, final_time=T_mhe, x0=x_ref, nbGT=nbGT,
                       number_shooting_points=Ns_mhe, use_torque=use_torque, use_SX=use_ACADOS)
-    if TRACK_EMG:
+    if TRACK_EMG and save_status:
         f = open(f"{fold}status_track_rt_EMG{TRACK_EMG}.txt", "a")
         f.write("Ns_mhe;  Co_lvl;  Marker_noise;  EMG_noise;  nb_try;  iter\n")
         f.close()
-    else:
+    elif TRACK_EMG is not True and save_status:
         f = open(f"{fold}status_track_rt_EMG{TRACK_EMG}.txt", "a")
         f.write("Ns_mhe;  Co_lvl;  Marker_noise;  EMG_noise;  nb_try;  iter\n")
         f.close()
@@ -385,7 +387,8 @@ if __name__ == "__main__":
                                             "print_level": 0,
                                             "nlp_solver_max_iter": 15
                                         })
-                    if sol['status'] != 0:
+                    if sol['status'] != 0 and save_status:
+
                         if TRACK_EMG:
                             f = open(f"{fold}status_track_rt_EMG{TRACK_EMG}.txt", "a")
                         else:
@@ -457,7 +460,7 @@ if __name__ == "__main__":
                                         solver_options={
                                             "nlp_solver_tol_comp": 1e-4,
                                             "nlp_solver_tol_eq": 1e-4,
-                                            "nlp_solver_tol_stat": 1e-3,
+                                            "nlp_solver_tol_stat": 1e-4,
                                             # "integrator_type": "IRK",
                                             # "nlp_solver_type": "SQP",
                                             # "sim_method_num_steps": 1,
@@ -466,7 +469,7 @@ if __name__ == "__main__":
                         X_est[:, iter] = x_out
                         if iter < ceil(Ns/rt_ratio)-Ns_mhe:
                             U_est[:, iter] = u_out
-                        if sol['status'] != 0:
+                        if sol['status'] != 0 and save_status:
                             if TRACK_EMG:
                                 f = open(f"{fold}status_track_rt_EMG{TRACK_EMG}.txt", "a")
                             else:
@@ -489,12 +492,10 @@ if __name__ == "__main__":
                                 q_est[:, j], dq_est[:, j], a_est[:, j], U_est[nbGT:, j]
                             )[i, :]
 
-
                     X_est_tries[tries, :, :] = X_est
                     U_est_tries[tries, :, :] = U_est
                     markers_target_tries[tries, :, :, :] = markers_target
                     muscles_target_tries[tries, :, :] = muscles_target
-
 
                     print(f"nb loops: {iter}")
                     print(f"Total time to solve with ACADOS : {toc} s")
