@@ -1,3 +1,6 @@
+# ----------------------------------------------------------------------------------------------------------------------
+# Run OCP in markers tracking and excitations tracking/minimizing for a full windows size
+# ----------------------------------------------------------------------------------------------------------------------
 from time import time
 import pickle
 from utils import *
@@ -98,10 +101,9 @@ def prepare_ocp(
 
 if __name__ == "__main__":
     # Configuration of the problem
-    use_activation = False
+    use_activation = True
     use_torque = False
     use_ACADOS = True
-    use_bash = True
     save_stats = True
     use_noise = False
     plot_and_animate = False
@@ -299,11 +301,11 @@ if __name__ == "__main__":
 
     # Store stats (informations on RMSE, force and time to solve) in .mat file if flag is on True
     if save_stats:
-        if os.path.isfile(f"solutions/stats_rt_activation_driven{use_activation}.mat"):
-            matcontent = sio.loadmat(f"solutions/stats_rt_activation_driven{use_activation}.mat")
+        if os.path.isfile(f"solutions/stats_rt_test_activation_driven{use_activation}.mat"):
+            matcontent = sio.loadmat(f"solutions/stats_rt_test_activation_driven{use_activation}.mat")
             err_mat = np.concatenate((matcontent["err_tries"], err_tmp))
             err_dic = {"err_tries": err_mat, "force_est": force_est, "force_ref": force_ref}
-            sio.savemat(f"solutions/stats_rt_activation_driven{use_activation}.mat", err_dic)
+            sio.savemat(f"solutions/stats_rt_test_activation_driven{use_activation}.mat", err_dic)
 
     # Store results in .mat file for all tries if flag is on True
     if save_results:

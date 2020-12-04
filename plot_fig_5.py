@@ -9,10 +9,10 @@ use_torque = False
 use_noise = False
 use_log = True  # If plot logarithmic (base 10) error
 
-nb_try = 100  # Number of try used to generate data
+nb_try = 1  # Number of try used to generate data
 
 # Get data
-matcontent = sio.loadmat("solutions/stats_rt_activation_drivenTrue.mat")
+matcontent = sio.loadmat("solutions/stats_rt_test_activation_drivenTrue.mat")
 err_ac = matcontent["err_tries"]
 err_ac_mhe = err_ac[:-1, :].reshape(-1, nb_try, 10)
 err_ac_full = err_ac[-1, :].reshape(1, 10)
@@ -38,7 +38,7 @@ else:
     err_markers_ac = err_mean_ac_full[:, 8]
     err_force_ac = err_mean_ac_full[:, 9]
 
-matcontent = sio.loadmat("solutions/stats_rt_activation_drivenFalse.mat")
+matcontent = sio.loadmat("solutions/stats_rt_test_activation_drivenFalse.mat")
 err_ex = matcontent["err_tries"]
 err_ex_mhe = err_ex[:-1, :].reshape(-1, nb_try, 10)
 err_ex_full = err_ex[-1, :].reshape(1, 10)
@@ -81,7 +81,7 @@ x_y_ticks = 12
 legend_size = 11
 s = 150
 
-# Plot Error of Q, markers, muscle force function of windows size (for activation and excitation driven)
+# Plot RMSE of Q, markers, muscle force function of windows size (for activation and excitation driven)
 seaborn.color_palette()
 grid_line_style = "--"
 

@@ -1,3 +1,6 @@
+# ----------------------------------------------------------------------------------------------------------------------
+# Run OCP in markers tracking and excitations tracking/minimizing for several sizes of windows
+# ----------------------------------------------------------------------------------------------------------------------
 from time import time
 import matplotlib.pyplot as plt
 import pickle
@@ -91,17 +94,17 @@ if __name__ == "__main__":
     # Configuration of the problem
     biorbd_model = biorbd.Model("arm_wt_rot_scap.bioMod")
     use_torque = False
-    use_activation = False
+    use_activation = True
     use_ACADOS = True
-    WRITE_STATS = False
+    WRITE_STATS = True
     save_status = False
     save_results = False
     TRACK_EMG = True
-    plot = True
+    plot = False
     with_low_weight = False
     use_noise = False
     use_co = False
-    use_bash = False
+    use_bash = True
     use_try = False
     use_N_elec = False  # Use an electromechanical delay when using activation driven
     if use_activation:
@@ -125,7 +128,7 @@ if __name__ == "__main__":
             else:
                 fold = "solutions/wt_track_emg_rt_exc/"
 
-    # Variable of the problem
+    # Variables of the problem
     T = 8
     start_delay = 25  # Start movement after 25 first nodes
     Ns = 800 - start_delay
@@ -153,9 +156,11 @@ if __name__ == "__main__":
 
     # Set ratio to be in real time (depend of the PC configuration and the problem complexity)
     if use_activation is not True:
-        rt_ratio_tot = [3, 3, 3, 3, 3, 5, 5, 6, 6, 6, 6, 6, 6, 6]  # For Nmhe = [3, 16]
+        # rt_ratio_tot = [3, 3, 3, 3, 3, 5, 5, 6, 6, 6, 6, 6, 6, 6]  # For Nmhe = [3, 16]
+        rt_ratio_tot = [3, 3, 3, 3, 3]
     else:
-        rt_ratio_tot = [2, 2, 2, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5]  # For Nmhe = [3, 22]
+        # rt_ratio_tot = [2, 2, 2, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5]  # For Nmhe = [3, 22]
+        rt_ratio_tot = [3, 3, 3, 3, 3]
     rt_ratio = rt_ratio_tot[Ns_mhe - 3]  # Get ratio from the list above
     T_mhe = T / (Ns / rt_ratio) * Ns_mhe  # Compute the new time of OCP
 
@@ -621,13 +626,13 @@ if __name__ == "__main__":
                 # Store stats (informations on RMSE, force and time to solve) in .mat file if flag is on True
                 err_dic = {"err_tries": err_tries, "force_est": force_est, "force_ref": force_ref}
                 if WRITE_STATS:
-                    if os.path.isfile(f"solutions/stats_rt_activation_driven{use_activation}.mat"):
-                        matcontent = sio.loadmat(f"solutions/stats_rt_activation_driven{use_activation}.mat")
+                    if os.path.isfile(f"solutions/stats_rt_test_activation_driven{use_activation}.mat"):
+                        matcontent = sio.loadmat(f"solutions/stats_rt_test_activation_driven{use_activation}.mat")
                         err_mat = np.concatenate((matcontent["err_tries"], err_tries))
                         err_dic = {"err_tries": err_mat, "force_est": force_est, "force_ref": force_ref}
-                        sio.savemat(f"solutions/stats_rt_activation_driven{use_activation}.mat", err_dic)
+                        sio.savemat(f"solutions/stats_rt_test_activation_driven{use_activation}.mat", err_dic)
                     else:
-                        sio.savemat(f"solutions/stats_rt_activation_driven{use_activation}.mat", err_dic)
+                        sio.savemat(f"solutions/stats_rt_test_activation_driven{use_activation}.mat", err_dic)
 
                 # Store results in .mat file for all tries if flag is on True
                 if save_results:
