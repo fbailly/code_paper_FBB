@@ -21,9 +21,19 @@ Ns = 100
 motion = "REACH2"
 nb_try = 30
 marker_noise_lvl = [0, 0.002, 0.005, 0.01]
-EMG_noise_lvl = [0, 1, 1.5, 2, 0]
+
+INCLUDE_MIN = True
+
+if INCLUDE_MIN:
+    EMG_noise_lvl = [0, 1, 1.5, 2, 0]
+else:
+    EMG_noise_lvl = [0, 1, 1.5, 2]
 # EMG_noise_lvl = [0, 0]
-EMG_lvl_label = ['track, lvl:None', 'track, lvl:low', 'track, lvl:mid', 'track, lvl:high', 'minimize']
+
+if INCLUDE_MIN:
+    EMG_lvl_label = ['track, lvl:None', 'track, lvl:low', 'track, lvl:mid', 'track, lvl:high', 'minimize']
+else:
+    EMG_lvl_label = ['track, lvl:None', 'track, lvl:low', 'track, lvl:mid', 'track, lvl:high']
 # EMG_lvl_label = ['track', 'minimize']
 states_controls = ['q', 'dq', 'act', 'exc', 'force']
 co_lvl = 4
@@ -56,13 +66,22 @@ marker_n_lvl_df = ([marker_lvl_label[0]]*len(EMG_noise_lvl)*5*nb_try
                    + [marker_lvl_label[2]]*len(EMG_noise_lvl)*5*nb_try
                    + [marker_lvl_label[3]]*len(EMG_noise_lvl)*5*nb_try)*co_lvl
 
-EMG_n_lvl_df = ([EMG_lvl_label[0]]*5*nb_try + [EMG_lvl_label[1]]*5*nb_try
-                + [EMG_lvl_label[2]]*5*nb_try + [EMG_lvl_label[3]]*5*nb_try
-                + [EMG_lvl_label[4]]*5*nb_try)*co_lvl*len(marker_noise_lvl)
+if INCLUDE_MIN:
+    EMG_n_lvl_df = ([EMG_lvl_label[0]]*5*nb_try + [EMG_lvl_label[1]]*5*nb_try
+                    + [EMG_lvl_label[2]]*5*nb_try + [EMG_lvl_label[3]]*5*nb_try
+                    + [EMG_lvl_label[4]]*5*nb_try)*co_lvl*len(marker_noise_lvl)
 
-EMG_n_lvl_stats = (['track']*5*nb_try + ['track']*5*nb_try
-                + ['track']*5*nb_try + ['track']*5*nb_try
-                + ['minimize']*5*nb_try)*co_lvl*len(marker_noise_lvl)
+    EMG_n_lvl_stats = (['track']*5*nb_try + ['track']*5*nb_try
+                    + ['track']*5*nb_try + ['track']*5*nb_try
+                    + ['minimize']*5*nb_try)*co_lvl*len(marker_noise_lvl)
+else:
+    EMG_n_lvl_df = ([EMG_lvl_label[0]]*5*nb_try + [EMG_lvl_label[1]]*5*nb_try
+                    + [EMG_lvl_label[2]]*5*nb_try + [EMG_lvl_label[3]]*5*nb_try
+                    )*co_lvl*len(marker_noise_lvl)
+
+    EMG_n_lvl_stats = (['track']*5*nb_try + ['track']*5*nb_try
+                    + ['track']*5*nb_try + ['track']*5*nb_try
+                    )*co_lvl*len(marker_noise_lvl)
 
 # EMG_n_lvl_df = ([EMG_lvl_label[0]]*5*nb_try + [EMG_lvl_label[1]]*5*nb_try)*co_lvl*len(marker_noise_lvl)
 #
@@ -171,13 +190,13 @@ RMSEtrack_pd = pd.DataFrame({"RMSE": RMSEtrack, "co_contraction_level": co_lvl_d
                              "Marker_noise_level_m": marker_n_lvl_df, "component": states_controls_df})
 
 # STATS
-df_stats = pd.DataFrame({"RMSE": RMSEtrack, "co_contraction_level": co_lvl_df, "EMG_objective": EMG_n_lvl_stats,
+df_stats = pd.DataFrame({"RMSE": RMSEtrack, "co_contraction_level": co_lvl_df, "EMG_objective": EMG_n_lvl_df,
                              "Marker_noise_level_m": marker_n_lvl_df, "component": states_controls_df})
 df_stats = df_stats[RMSEtrack_pd['component'] == 'exc']
 df_stats = df_stats[df_stats['RMSE'].notna()]
 df_stats.to_pickle('stats_df_1.pkl')
-
-aov = pg.anova(dv='RMSE', between=['EMG_objective', 'co_contraction_level'],
+# aov = pg.kruskal(data=df_stats, dv='RMSE', between=['EMG_objective', 'co_contraction_level'])
+aov = pg.anova(dv='RMSE', between=['co_contraction_level', 'EMG_objective', ],
                data=df_stats)
 ptt = pg.pairwise_ttests(dv='RMSE', between=['EMG_objective', 'co_contraction_level'], data=df_stats, padjust='bonf')
 pg.print_table(aov.round(3))
@@ -205,7 +224,7 @@ plt.title(f'Error on muscle force {title_str}', fontsize=20)
 plt.figure()
 
 # STATS
-df_stats = pd.DataFrame({"RMSE": RMSEtrack, "co_contraction_level": co_lvl_df, "EMG_objective": EMG_n_lvl_stats,
+df_stats = pd.DataFrame({"RMSE": RMSEtrack, "co_contraction_level": co_lvl_df, "EMG_objective": EMG_n_lvl_df,
                              "Marker_noise_level_m": marker_n_lvl_df, "component": states_controls_df})
 df_stats = df_stats[(RMSEtrack_pd['component'] == 'q')]
 df_stats = df_stats[df_stats['RMSE'].notna()]
