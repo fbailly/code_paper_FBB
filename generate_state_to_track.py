@@ -1,14 +1,11 @@
-import biorbd
-from time import time
-import numpy as np
-from casadi import MX, Function
-import bioviz
+# ----------------------------------------------------------------------------------------------------------------------
+# The aim of this script is to generate a reference joint kinematics. Next step (generate_excitation_with_low_bounds.py)
+# will be to track this kinematics to generate optimal excitations for several levels of co-contraction.
+# ----------------------------------------------------------------------------------------------------------------------
 import scipy.io as sio
-import pickle
-import os.path
 import matplotlib.pyplot as plt
-# from generate_data_noise_funct import generate_noise
 from utils import *
+import bioviz
 from bioptim import (
     OptimalControlProgram,
     ObjectiveList,
@@ -17,36 +14,22 @@ from bioptim import (
     DynamicsType,
     BoundsList,
     QAndQDotBounds,
-    InitialGuessList,
     InitialGuessOption,
-    ShowResult,
     Solver,
     InterpolationType,
     Bounds,
-    BoundsOption,
-    Instant,
-    Simulate,
-    Data
 )
 
-def switch_phase(ocp, sol):
-    data = Data.get_data(ocp, sol)
-    q = data[0]["q"]
-    dq = data[0]["q_dot"]
-    act = data[0]["muscles"]
-    exc = data[1]["muscles"]
-    x = np.vstack([q, dq, act])
-    return x[:, :-1], exc[:, :-1], x[:, -1]
 
 def prepare_ocp(
-        biorbd_model,
-        final_time,
-        number_shooting_points,
-        x0,
-        xT,
-        use_SX=False,
-        nb_threads=8,
-        ):
+    biorbd_model,
+    final_time,
+    number_shooting_points,
+    x0,
+    xT,
+    use_SX=False,
+    nb_threads=8,
+):
     # --- Options --- #
     # Model path
     biorbd_model = biorbd_model
@@ -59,13 +42,17 @@ def prepare_ocp(
     # Add objective functions
     objective_functions = ObjectiveList()
     objective_functions.add(
-        Objective.Lagrange.MINIMIZE_STATE, weight=10, states_idx=np.array(range(biorbd_model.nbQ())))
-    objective_functions.add(Objective.Lagrange.MINIMIZE_STATE, weight=10,
-                            states_idx=np.array(range(biorbd_model.nbQ(), biorbd_model.nbQ() * 2)))
+        Objective.Lagrange.MINIMIZE_STATE, weight=10, states_idx=np.array(range(biorbd_model.nbQ()))
+    )
     objective_functions.add(
         Objective.Lagrange.MINIMIZE_STATE,
         weight=10,
-        states_idx=np.array(range(biorbd_model.nbQ() * 2, biorbd_model.nbQ() * 2 + biorbd_model.nbMuscles()))
+        states_idx=np.array(range(biorbd_model.nbQ(), biorbd_model.nbQ() * 2)),
+    )
+    objective_functions.add(
+        Objective.Lagrange.MINIMIZE_STATE,
+        weight=10,
+        states_idx=np.array(range(biorbd_model.nbQ() * 2, biorbd_model.nbQ() * 2 + biorbd_model.nbMuscles())),
     )
     objective_functions.add(Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=10)
 
@@ -74,8 +61,8 @@ def prepare_ocp(
     objective_functions.add(
         Objective.Mayer.TRACK_STATE,
         weight=100000,
-        target=np.array([xT[:biorbd_model.nbQ()*2]]).T,
-        states_idx=np.array(range(biorbd_model.nbQ()*2))
+        target=np.array([xT[: biorbd_model.nbQ() * 2]]).T,
+        states_idx=np.array(range(biorbd_model.nbQ() * 2)),
     )
     # Dynamics
     dynamics = DynamicsTypeList()
@@ -88,6 +75,9 @@ def prepare_ocp(
     x_bounds[0].concatenate(
         Bounds([activation_min] * biorbd_model.nbMuscles(), [activation_max] * biorbd_model.nbMuscles())
     )
+    x_bounds[0].min[: biorbd_model.nbQ(), 0] = x_phase[0, : biorbd_model.nbQ()] - 0.1
+    x_bounds[0].max[: biorbd_model.nbQ(), 0] = x_phase[0, : biorbd_model.nbQ()] + 0.1
+
     # Control path constraint
     u_bounds = BoundsList()
     u_bounds.add(
@@ -98,12 +88,12 @@ def prepare_ocp(
     )
 
     # Initial guesses
-    x_init = InitialGuessOption(np.tile(np.concatenate(
-        (x0, [activation_init] * biorbd_model.nbMuscles()))
-        , (number_shooting_points+1, 1)).T, interpolation=InterpolationType.EACH_FRAME)
-    u0 = np.array([excitation_init]*biorbd_model.nbMuscles())
-    u_init = InitialGuessOption(np.tile(u0, (number_shooting_points, 1)).T,
-                                interpolation=InterpolationType.EACH_FRAME)
+    x_init = InitialGuessOption(
+        np.tile(np.concatenate((x0, [activation_init] * biorbd_model.nbMuscles())), (number_shooting_points + 1, 1)).T,
+        interpolation=InterpolationType.EACH_FRAME,
+    )
+    u0 = np.array([excitation_init] * biorbd_model.nbMuscles())
+    u_init = InitialGuessOption(np.tile(u0, (number_shooting_points, 1)).T, interpolation=InterpolationType.EACH_FRAME)
     # ------------- #
 
     return OptimalControlProgram(
@@ -122,178 +112,135 @@ def prepare_ocp(
 
 
 if __name__ == "__main__":
-    biorbd_model = biorbd.Model("arm_wt_rot_scap.bioMod")
-    T = 1
-    Ns = 100
-    co_value = []
-    motion = 'REACH2'
-    x_phase = np.array([[-0.1, -0.3, -0.1, 0.1, 0, 0, 0, 0],
-                        [-0.2, -1.3, -0.5, 0.5, 0, 0, 0, 0],
-                        [-0.1, -0.3, -0.1, 0.1, 0, 0, 0, 0],
-                        [-0.2, -1.3, -0.5, 0.5, 0, 0, 0, 0],
-                        [-0.1, -0.3, -0.1, 0.1, 0, 0, 0, 0],
-                        [-0.2, -1.3, -0.5, 0.5, 0, 0, 0, 0],
-                        [-0.1, -0.3, -0.1, 0.1, 0, 0, 0, 0],
-                        [-0.2, -1.3, -0.5, 0.5, 0, 0, 0, 0],
-                        [-0.1, -0.3, -0.1, 0.1, 0, 0, 0, 0],
-                        [-0.2, -1.3, -0.5, 0.5, 0, 0, 0, 0],
-                        ])
-
-    # x_phase = np.array([[-0.1, -0.3, -0.1, 0.1, 0, 0, 0, 0],
-    #                     [-0.2, -1.3, -0.5, 0.5, 0, 0, 0, 0],
-    #                     [0.89, -0.5, -0.5, 0.8, 0, 0, 0, 0],
-    #                     [-0.2, -1.3, -0.5, 0.5, 0, 0, 0, 0],
-    #                     [-0.1, -0.3, -0.1, 0.1, 0, 0, 0, 0],
-    #                     [-0.2, -1.3, -0.5, 0.5, 0, 0, 0, 0],
-    #                     [0.89, -0.5, -0.5, 0.8, 0, 0, 0, 0],
-    #                     [-0.2, -1.3, -0.5, 0.5, 0, 0, 0, 0],
-    #                     [-0.1, -0.3, -0.1, 0.1, 0, 0, 0, 0],
-    #                     [-0.2, -1.3, -0.5, 0.5, 0, 0, 0, 0],
-    #                     [0.89, -0.5, -0.5, 0.8, 0, 0, 0, 0],
-    #                     [-0.1, -0.3, -0.1, 0.1, 0, 0, 0, 0],
-    #                     [-0.2, -1.3, -0.5, 0.5, 0, 0, 0, 0],
-    #                     [0.89, -0.5, -0.5, 0.8, 0, 0, 0, 0],
-    #                     [-0.1, -0.3, -0.1, 0.1, 0, 0, 0, 0],
-    #                     [-0.2, -1.3, -0.5, 0.5, 0, 0, 0, 0],
-    #                     [-0.1, -0.3, -0.1, 0.1, 0, 0, 0, 0],
-    #                     ])
-    nb_phase = 8
-    X_est = np.zeros((biorbd_model.nbQ()*2+biorbd_model.nbMuscleTotal(), nb_phase*Ns+1))
-    U_est = np.zeros((biorbd_model.nbMuscleTotal(), nb_phase*Ns))
+    # Configuration of the problem
     use_ACADOS = True
     use_CO = False
-    save_data = True
+    save_results = True
+    animate = True
+    plot = True
 
-    excitations_max = [1] * biorbd_model.nbMuscleTotal()
-    if use_CO is not True:
-        excitations_init = [[0.05] * biorbd_model.nbMuscleTotal()]
-        excitations_min = [[0] * biorbd_model.nbMuscleTotal()]
+    # Parameters of the problem
+    biorbd_model = biorbd.Model("arm_wt_rot_scap.bioMod")
+    T = 1  # Time for each phase
+    Ns = 100  # Nodes for each phase
+    nb_phase = 8  # Number of phase
+    co_value = []
+    motion = "REACH2"
+    X_est = np.zeros((biorbd_model.nbQ() * 2 + biorbd_model.nbMuscleTotal(), nb_phase * Ns + 1))
+    U_est = np.zeros((biorbd_model.nbMuscleTotal(), nb_phase * Ns))
 
-    else:
-        excitations_init = [
-            [0.05] * biorbd_model.nbMuscleTotal(),
-            [0.05] * 6 + [0.1] * 3 + [0.05] * 10,
-            [0.05] * 6 + [0.2] * 3 + [0.05] * 10,
-            [0.05] * 6 + [0.3] * 3 + [0.05] * 10,
-            # [0.05] * 6 + [0.4] * 3 + [0.05] * 10
+    # Set the joint angles target for each phase
+    x_phase = np.array(
+        [
+            [-0.1, -0.3, -0.1, 0.1, 0, 0, 0, 0],
+            [-0.2, -1.3, -0.5, 0.5, 0, 0, 0, 0],
+            [-0.1, -0.3, -0.1, 0.1, 0, 0, 0, 0],
+            [-0.2, -1.3, -0.5, 0.5, 0, 0, 0, 0],
+            [-0.1, -0.3, -0.1, 0.1, 0, 0, 0, 0],
+            [-0.2, -1.3, -0.5, 0.5, 0, 0, 0, 0],
+            [-0.1, -0.3, -0.1, 0.1, 0, 0, 0, 0],
+            [-0.2, -1.3, -0.5, 0.5, 0, 0, 0, 0],
+            [-0.1, -0.3, -0.1, 0.1, 0, 0, 0, 0],
+            [-0.2, -1.3, -0.5, 0.5, 0, 0, 0, 0],
         ]
-        excitations_min = [
-            [0] * biorbd_model.nbMuscleTotal(),
-            [0] * 6 + [0.1] * 3 + [0] * 10,
-            [0] * 6 + [0.2] * 3 + [0] * 10,
-            [0] * 6 + [0.3] * 3 + [0] * 10,
-            # [0] * 6 + [0.4] * 3 + [0] * 10
-        ]
+    )
 
-    ocp = prepare_ocp(biorbd_model=biorbd_model, final_time=T, number_shooting_points=Ns,
-                      x0=x_phase[0, :], xT=x_phase[1, :], use_SX=True)
+    # Build graph
+    ocp = prepare_ocp(
+        biorbd_model=biorbd_model,
+        final_time=T,
+        number_shooting_points=Ns,
+        x0=x_phase[0, :],
+        xT=x_phase[1, :],
+        use_SX=True,
+    )
 
-    for co in range(0, len(excitations_init)):
-        u_i = excitations_init[co]
-        u_mi = excitations_min[co]
-        u_ma = excitations_max
-
-        # Update u_init and u_bounds
-        u_init = InitialGuessOption(np.tile(u_i, (ocp.nlp[0].ns, 1)).T, interpolation=InterpolationType.EACH_FRAME)
-        x_init = InitialGuessOption(np.tile(np.concatenate(
-            (x_phase[0, :], [0.5] * biorbd_model.nbMuscles())), (ocp.nlp[0].ns + 1, 1)).T,
-                                    interpolation=InterpolationType.EACH_FRAME)
-        ocp.update_initial_guess(x_init, u_init=u_init)
-
-        u_bounds = BoundsOption([u_mi, u_ma], interpolation=InterpolationType.CONSTANT)
-        x_bounds = BoundsList()
-        x_bounds.add(QAndQDotBounds(biorbd_model))
-        # add muscle activation bounds
-        x_bounds[0].concatenate(
-            Bounds([0] * biorbd_model.nbMuscles(), [1] * biorbd_model.nbMuscles())
+    # Solve for each phase
+    for phase in range(1, nb_phase + 1):
+        sol = ocp.solve(
+            solver=Solver.ACADOS,
+            show_online_optim=False,
+            solver_options={
+                "nlp_solver_max_iter": 100,
+                "nlp_solver_tol_comp": 1e-7,
+                "nlp_solver_tol_eq": 1e-7,
+                "nlp_solver_tol_stat": 1e-7,
+                "integrator_type": "IRK",
+                "nlp_solver_type": "SQP",
+                "sim_method_num_steps": 1,
+            },
         )
-        x_bounds[0].min[:biorbd_model.nbQ(), 0] = x_phase[0, :biorbd_model.nbQ()]-0.1
-        x_bounds[0].max[:biorbd_model.nbQ(), 0] = x_phase[0, :biorbd_model.nbQ()]+0.1
-        ocp.update_bounds(x_bounds=x_bounds, u_bounds=u_bounds)
 
-        for phase in range(1, nb_phase+1):
-            # sol = ocp.solve(solver=Solver.IPOPT)
-            sol = ocp.solve(
-                solver=Solver.ACADOS,
-                show_online_optim=False,
-                solver_options={
-                    "nlp_solver_max_iter": 100,
-                    "nlp_solver_tol_comp": 1e-7,
-                    "nlp_solver_tol_eq": 1e-7,
-                    "nlp_solver_tol_stat": 1e-7,
-                    "integrator_type": "IRK",
-                    "nlp_solver_type": "SQP",
-                    "sim_method_num_steps": 1,
-                })
+        # get last state of previous solve
+        x_out, u_out, x0 = switch_phase(ocp, sol)
 
-            # get last state of previous solve
-            x_out, u_out, x0 = switch_phase(ocp, sol)
+        # impose it as first state of next solve
+        ocp.nlp[0].x_bounds.min[:, 0] = x0
+        ocp.nlp[0].x_bounds.max[:, 0] = x0
 
-            # impose it as first state of next solve
-            ocp.nlp[0].x_bounds.min[:, 0] = x0
-            ocp.nlp[0].x_bounds.max[:, 0] = x0
+        # update initial guess on states
+        x_init = InitialGuessOption(np.tile(x0, (ocp.nlp[0].ns + 1, 1)).T, interpolation=InterpolationType.EACH_FRAME)
+        ocp.update_initial_guess(x_init=x_init)
 
-            # update initial guess, bounds stay the same
-            x_init = InitialGuessOption(np.tile(x0, (ocp.nlp[0].ns + 1, 1)).T,
-                                        interpolation=InterpolationType.EACH_FRAME)
-            ocp.update_initial_guess(x_init, u_init=u_init)
-            ocp.update_bounds(u_bounds=u_bounds)
+        # Update objectives functions
+        objectives = ObjectiveList()
+        objectives.add(Objective.Lagrange.MINIMIZE_STATE, weight=10, states_idx=np.array(range(biorbd_model.nbQ())))
+        objectives.add(
+            Objective.Lagrange.MINIMIZE_STATE,
+            weight=10,
+            states_idx=np.array(range(biorbd_model.nbQ(), biorbd_model.nbQ() * 2)),
+        )
+        objectives.add(
+            Objective.Lagrange.MINIMIZE_STATE,
+            weight=10,
+            states_idx=np.array(range(biorbd_model.nbQ() * 2, biorbd_model.nbQ() * 2 + biorbd_model.nbMuscles())),
+        )
+        objectives.add(Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=10)
 
-            objectives = ObjectiveList()
-            objectives.add(
-                Objective.Lagrange.MINIMIZE_STATE, weight=10, states_idx=np.array(range(biorbd_model.nbQ())))
-            objectives.add(Objective.Lagrange.MINIMIZE_STATE, weight=10,
-                           states_idx=np.array(range(biorbd_model.nbQ(), biorbd_model.nbQ() * 2)))
-            objectives.add(
-                Objective.Lagrange.MINIMIZE_STATE,
-                weight=10,
-                states_idx=np.array(range(biorbd_model.nbQ() * 2, biorbd_model.nbQ() * 2 + biorbd_model.nbMuscles()))
-            )
-            objectives.add(Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=10)
+        objectives.add(
+            Objective.Mayer.TRACK_STATE,
+            weight=10000,
+            target=np.array([x_phase[phase + 1, : biorbd_model.nbQ() * 2]]).T,
+            states_idx=np.array(range(biorbd_model.nbQ() * 2)),
+        )
+        ocp.update_objectives(objectives)
 
-            objectives.add(
-                Objective.Mayer.TRACK_STATE,
-                weight=10000,
-                target=np.array([x_phase[phase+1, :biorbd_model.nbQ()*2]]).T,
-                states_idx=np.array(range(biorbd_model.nbQ()*2))
-            )
+        # Store optimal solution
+        X_est[:, (phase - 1) * Ns : phase * Ns] = x_out
+        U_est[:, (phase - 1) * Ns : phase * Ns] = u_out
 
-            # objectives.add(Objective.Lagrange.MINIMIZE_MUSCLES_CONTROL_DERIVATIVE, weight=100)
-            print(x_phase[phase+1, :biorbd_model.nbQ()])
-            ocp.update_objectives(objectives)
+    # Collect last state
+    X_est[:, -1] = x0
 
-            X_est[:, (phase-1)*Ns:phase*Ns] = x_out
-            U_est[:, (phase - 1) * Ns:phase * Ns] = u_out
-# Collect last state
-X_est[:, -1] = x0
+    # Save optimal solution if flag is True
+    if save_results:
+        dic = {"state": X_est, "controls": U_est}
+        sio.savemat(f"solutions/state_to_track_{phase}phase.mat", dic)
 
-dic = {'state': X_est, 'controls': U_est}
-sio.savemat(f"solutions/state_to_track_{phase}phase.mat", dic)
+    # Plot optimal solution if flag is True
+    if plot:
+        plt.subplot(211)
+        for est, name in zip(X_est[: biorbd_model.nbQ(), :], biorbd_model.nameDof()):
+            plt.plot(est, "x", label=name.to_string() + "_q_est")
+        plt.legend()
 
-plt.subplot(211)
-for est, name in zip(X_est[:biorbd_model.nbQ(), :], biorbd_model.nameDof()):
-    plt.plot(est, 'x', label=name.to_string() + '_q_est')
-plt.legend()
+        plt.subplot(212)
+        for est, name in zip(X_est[biorbd_model.nbQ() : biorbd_model.nbQ() * 2, :], biorbd_model.nameDof()):
+            plt.plot(est, "x", label=name.to_string() + "_qdot_est")
+        plt.legend()
+        plt.tight_layout()
 
-plt.subplot(212)
-for est, name in zip(X_est[biorbd_model.nbQ():biorbd_model.nbQ() * 2, :], biorbd_model.nameDof()):
-    plt.plot(est, 'x', label=name.to_string() + '_qdot_est')
-plt.legend()
-plt.tight_layout()
+        plt.figure("Muscles excitations")
+        for i in range(biorbd_model.nbMuscles()):
+            plt.subplot(4, 5, i + 1)
+            plt.plot(U_est[i, :])
+            plt.title(biorbd_model.muscleNames()[i].to_string())
+        plt.legend(labels=["u_est"], bbox_to_anchor=(1.05, 1), loc="upper left", borderaxespad=0.0)
+        print()
+        plt.show()
 
-plt.figure('Muscles excitations')
-for i in range(biorbd_model.nbMuscles()):
-    plt.subplot(4, 5, i + 1)
-    plt.plot(U_est[i, :])
-    plt.title(biorbd_model.muscleNames()[i].to_string())
-plt.legend(labels=['u_est'], bbox_to_anchor=(1.05, 1), loc='upper left',
-           borderaxespad=0.)
-print()
-plt.show()
-
-# b = bioviz.Viz(model_path="arm_wt_rot_scap.bioMod")
-# b.load_movement(X_est[:biorbd_model.nbQ(), :])
-# b.exec()
-
-
-
+    # Animate the model if flag is True
+    if animate:
+        b = bioviz.Viz(model_path="arm_wt_rot_scap.bioMod")
+        b.load_movement(X_est[: biorbd_model.nbQ(), :])
+        b.exec()

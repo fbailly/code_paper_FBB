@@ -29,5 +29,4 @@ aov = pg.anova(dv='RMSE', between=['Marker_noise_level_m', "EMG_objective"],
 ptt = pg.pairwise_ttests(dv='RMSE', between=['Marker_noise_level_m', "EMG_objective"], data=df2, padjust='bonf')
 pg.print_table(aov.round(3))
 pg.print_table(ptt.round(3))
-
 plt.show()

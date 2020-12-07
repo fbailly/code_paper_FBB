@@ -308,3 +308,14 @@ def generate_noise(model, q, excitations, marker_noise_level, EMG_noise_level):
         markers_target_noise[:, :, i] = get_markers(q_sol[:, i])
 
     return markers_target_noise, EMG_noise
+
+
+# Return states and controls on the last node to keep the continuity of the problem
+def switch_phase(ocp, sol):
+    data = Data.get_data(ocp, sol)
+    q = data[0]["q"]
+    dq = data[0]["q_dot"]
+    act = data[0]["muscles"]
+    exc = data[1]["muscles"]
+    x = np.vstack([q, dq, act])
+    return x[:, :-1], exc[:, :-1], x[:, -1]
