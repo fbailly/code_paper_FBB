@@ -238,11 +238,17 @@ pg.print_table(ptt.round(3))
 
 # Figure of RMSE on force function of co-contraction level (Fig. 7)
 seaborn.set_style("whitegrid")
-seaborn.color_palette()
+seaborn.color_palette("bright")
+my_pal = {
+    "track, lvl:None": 'royalblue', "track, lvl:low": 'orange',
+          "track, lvl:mid":'seagreen', "track, lvl:high":'firebrick',
+          "minimize": 'silver'}
+
 ax = seaborn.boxplot(
     y=RMSEtrack_pd["RMSE"][RMSEtrack_pd["component"] == "force"],
     x=RMSEtrack_pd["co_contraction_level"],
     hue=RMSEtrack_pd["EMG_objective"],
+    palette=my_pal,
 )
 
 # Title of figure varying if there are high or low weight on marker objective function
@@ -284,6 +290,7 @@ ax2 = seaborn.boxplot(
     y=RMSEtrack_pd["RMSE"][(RMSEtrack_pd["component"] == "q")],
     x=RMSEtrack_pd["Marker_noise_level_m"],
     hue=RMSEtrack_pd["EMG_objective"],
+    palette=my_pal,
 )
 ax2.set(ylabel="RMSE on joint angle (deg)")
 ax2.xaxis.get_label().set_fontsize(20)
