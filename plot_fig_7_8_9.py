@@ -10,6 +10,7 @@ from math import ceil
 
 # Configure the plot
 W_LOW_WEIGHTS = True
+INCLUDE_MIN = False
 
 # Variables of the problem
 biorbd_model = biorbd.Model("arm_wt_rot_scap.bioMod")
@@ -19,7 +20,6 @@ motion = "REACH2"
 nb_try = 30
 states_controls = ["q", "dq", "act", "exc", "force"]
 co_lvl = 4
-
 
 # Set folder of data
 if W_LOW_WEIGHTS:
@@ -31,10 +31,13 @@ else:
 
 # Set noise parameters(same than used for the OCP) and labels
 marker_noise_lvl = [0, 0.002, 0.005, 0.01]
-EMG_noise_lvl = [0, 1, 1.5, 2, 0]
-# EMG_noise_lvl = [0, 0]
-EMG_lvl_label = ["track, lvl:None", "track, lvl:low", "track, lvl:mid", "track, lvl:high", "minimize"]
-# EMG_lvl_label = ['track', 'minimize']
+if INCLUDE_MIN:
+    EMG_noise_lvl = [0, 1, 1.5, 2, 0]
+    EMG_lvl_label = ["track, lvl:None", "track, lvl:low", "track, lvl:mid", "track, lvl:high", "minimize"]
+else:
+    EMG_noise_lvl = [0, 1, 1.5, 2]
+    EMG_lvl_label = ["track, lvl:None", "track, lvl:low", "track, lvl:mid", "track, lvl:high"]
+
 co_lvl_label = ["None", "low", "mid", "high"]
 marker_lvl_label = ["None", "low", "mid", "high"]
 
@@ -65,33 +68,47 @@ marker_n_lvl_df = (
     + [marker_lvl_label[3]] * len(EMG_noise_lvl) * 5 * nb_try
 ) * co_lvl
 
-EMG_n_lvl_df = (
-    (
-        [EMG_lvl_label[0]] * 5 * nb_try
-        + [EMG_lvl_label[1]] * 5 * nb_try
-        + [EMG_lvl_label[2]] * 5 * nb_try
-        + [EMG_lvl_label[3]] * 5 * nb_try
-        + [EMG_lvl_label[4]] * 5 * nb_try
+if INCLUDE_MIN:
+    EMG_n_lvl_df = (
+        (
+            [EMG_lvl_label[0]] * 5 * nb_try
+            + [EMG_lvl_label[1]] * 5 * nb_try
+            + [EMG_lvl_label[2]] * 5 * nb_try
+            + [EMG_lvl_label[3]] * 5 * nb_try
+            + [EMG_lvl_label[4]] * 5 * nb_try
+        )
+        * co_lvl
+        * len(marker_noise_lvl)
     )
-    * co_lvl
-    * len(marker_noise_lvl)
-)
 
-EMG_n_lvl_stats = (
-    (
-        ["track"] * 5 * nb_try
-        + ["track"] * 5 * nb_try
-        + ["track"] * 5 * nb_try
-        + ["track"] * 5 * nb_try
-        + ["minimize"] * 5 * nb_try
+    EMG_n_lvl_stats = (
+        (
+            ["track"] * 5 * nb_try
+            + ["track"] * 5 * nb_try
+            + ["track"] * 5 * nb_try
+            + ["track"] * 5 * nb_try
+            + ["minimize"] * 5 * nb_try
+        )
+        * co_lvl
+        * len(marker_noise_lvl)
     )
-    * co_lvl
-    * len(marker_noise_lvl)
-)
+else:
+    EMG_n_lvl_df = (
+        (
+            [EMG_lvl_label[0]] * 5 * nb_try
+            + [EMG_lvl_label[1]] * 5 * nb_try
+            + [EMG_lvl_label[2]] * 5 * nb_try
+            + [EMG_lvl_label[3]] * 5 * nb_try
+        )
+        * co_lvl
+        * len(marker_noise_lvl)
+    )
 
-# EMG_n_lvl_df = ([EMG_lvl_label[0]]*5*nb_try + [EMG_lvl_label[1]]*5*nb_try)*co_lvl*len(marker_noise_lvl)
-#
-# EMG_n_lvl_stats = (['track']*5*nb_try + ['minimize']*5*nb_try)*co_lvl*len(marker_noise_lvl)
+    EMG_n_lvl_stats = (
+        (["track"] * 5 * nb_try + ["track"] * 5 * nb_try + ["track"] * 5 * nb_try + ["track"] * 5 * nb_try)
+        * co_lvl
+        * len(marker_noise_lvl)
+    )
 
 states_controls_df = (
     (
@@ -223,7 +240,7 @@ df_stats = pd.DataFrame(
     {
         "RMSE": RMSEtrack,
         "co_contraction_level": co_lvl_df,
-        "EMG_objective": EMG_n_lvl_stats,
+        "EMG_objective": EMG_n_lvl_df,
         "Marker_noise_level_m": marker_n_lvl_df,
         "component": states_controls_df,
     }
@@ -231,7 +248,7 @@ df_stats = pd.DataFrame(
 df_stats = df_stats[RMSEtrack_pd["component"] == "exc"]
 df_stats = df_stats[df_stats["RMSE"].notna()]
 df_stats.to_pickle("stats_df_1.pkl")
-aov = pg.anova(dv="RMSE", between=["EMG_objective", "co_contraction_level"], data=df_stats)
+aov = pg.anova(dv="RMSE", between=["co_contraction_level", "EMG_objective"], data=df_stats)
 ptt = pg.pairwise_ttests(dv="RMSE", between=["EMG_objective", "co_contraction_level"], data=df_stats, padjust="bonf")
 pg.print_table(aov.round(3))
 pg.print_table(ptt.round(3))
@@ -239,10 +256,22 @@ pg.print_table(ptt.round(3))
 # Figure of RMSE on force function of co-contraction level (Fig. 7)
 seaborn.set_style("whitegrid")
 seaborn.color_palette("bright")
-my_pal = {
-    "track, lvl:None": 'royalblue', "track, lvl:low": 'orange',
-          "track, lvl:mid":'seagreen', "track, lvl:high":'firebrick',
-          "minimize": 'silver'}
+if INCLUDE_MIN:
+    my_pal = {
+        "track, lvl:None": "royalblue",
+        "track, lvl:low": "orange",
+        "track, lvl:mid": "seagreen",
+        "track, lvl:high": "firebrick",
+        "minimize": "silver",
+    }
+else:
+    my_pal = {
+        "track, lvl:None": "royalblue",
+        "track, lvl:low": "orange",
+        "track, lvl:mid": "seagreen",
+        "track, lvl:high": "firebrick",
+    }
+
 
 ax = seaborn.boxplot(
     y=RMSEtrack_pd["RMSE"][RMSEtrack_pd["component"] == "force"],
@@ -272,7 +301,7 @@ df_stats = pd.DataFrame(
     {
         "RMSE": RMSEtrack,
         "co_contraction_level": co_lvl_df,
-        "EMG_objective": EMG_n_lvl_stats,
+        "EMG_objective": EMG_n_lvl_df,
         "Marker_noise_level_m": marker_n_lvl_df,
         "component": states_controls_df,
     }
@@ -280,6 +309,7 @@ df_stats = pd.DataFrame(
 df_stats = df_stats[(RMSEtrack_pd["component"] == "q")]
 df_stats = df_stats[df_stats["RMSE"].notna()]
 df_stats.to_pickle("stats_df_2.pkl")
+
 aov = pg.anova(dv="RMSE", between=["Marker_noise_level_m", "EMG_objective"], data=df_stats, detailed=True)
 ptt = pg.pairwise_ttests(dv="RMSE", between=["Marker_noise_level_m", "EMG_objective"], data=df_stats, padjust="bonf")
 pg.print_table(aov.round(3))
