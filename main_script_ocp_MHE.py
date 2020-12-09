@@ -94,9 +94,9 @@ if __name__ == "__main__":
     # Configuration of the problem
     biorbd_model = biorbd.Model("arm_wt_rot_scap.bioMod")
     use_torque = False
-    use_activation = True
+    use_activation = False
     use_ACADOS = True
-    WRITE_STATS = True
+    WRITE_STATS = False
     save_status = False
     save_results = False
     TRACK_EMG = True
@@ -104,7 +104,7 @@ if __name__ == "__main__":
     with_low_weight = False
     use_noise = False
     use_co = False
-    use_bash = True
+    use_bash = False
     use_try = False
     use_N_elec = False  # Use an electromechanical delay when using activation driven
     if use_activation:
@@ -136,7 +136,7 @@ if __name__ == "__main__":
     N_elec = 2  # Set how much node represent well the electromechanical delay (~0.02s)
     final_offset = 30  # Number of last nodes to ignore when calculate RMSE
     init_offset = 5  # Number of first nodes to ignore when calculate RMSE
-    Ns_mhe = 16  # Set the size of MHE windows
+    Ns_mhe = 7 # Set the size of MHE windows
     tau_init = 0
     muscle_init = 0.5
     nbMT = biorbd_model.nbMuscleTotal()
@@ -210,7 +210,7 @@ if __name__ == "__main__":
         f = open(f"{fold}status_track_rt_EMG{TRACK_EMG}.txt", "a")
         f.write("Ns_mhe;  Co_lvl;  Marker_noise;  EMG_noise;  nb_try;  iter\n")
         f.close()
-
+    get_force = force_func(biorbd_model, use_activation=use_activation)
     # Solve in a loop for each co-contraction level
     for co in range(0, nb_co_lvl):
 
@@ -406,7 +406,6 @@ if __name__ == "__main__":
 
                     tic = time()  # Save initial time
                     for iter in range(1, ceil((Ns + 1) / rt_ratio - Ns_mhe)):
-
                         # set initial state
                         ocp.nlp[0].x_bounds.min[:, 0] = x0[:, 0]
                         ocp.nlp[0].x_bounds.max[:, 0] = x0[:, 0]
@@ -469,7 +468,25 @@ if __name__ == "__main__":
                                 "nlp_solver_tol_stat": 1e-4,
                             },
                         )
+                        # Set solutions and set initial guess for next optimisation
+                        x0, u0, x_out, u_out = warm_start_mhe(ocp, sol, use_activation=use_activation)
+                        X_est[:, iter] = x_out
+                        if iter < ceil(Ns / rt_ratio) - Ns_mhe:
+                            U_est[:, iter] = u_out
 
+                        # Compute muscular force at each iteration
+                        q_est = X_est[: biorbd_model.nbQ(), :]
+                        dq_est = X_est[biorbd_model.nbQ(): biorbd_model.nbQ() * 2, :]
+                        if use_activation:
+                            a_est = np.zeros((nbMT, Ns))
+                        else:
+                            a_est = X_est[-nbMT:, :]
+                        for i in range(biorbd_model.nbMuscles()):
+                            for j in [iter]:
+                                force_est[tries, i, j] = get_force(q_est[:, j], dq_est[:, j], a_est[:, j],
+                                                                   U_est[nbGT:, j])[
+                                                         i, :
+                                                         ]
                         # Save status of optimisation
                         if sol["status"] != 0 and save_status:
                             if TRACK_EMG:
@@ -479,12 +496,6 @@ if __name__ == "__main__":
                             f.write(f"{Ns_mhe}; {co}; {marker_lvl}; {EMG_lvl}; {tries}; " f"{iter}\n")
                             f.close()
 
-                        # Set solutions and set initial guess for next optimisation
-                        x0, u0, x_out, u_out = warm_start_mhe(ocp, sol, use_activation=use_activation)
-                        X_est[:, iter] = x_out
-                        if iter < ceil(Ns / rt_ratio) - Ns_mhe:
-                            U_est[:, iter] = u_out
-
                     toc = time() - tic  # Save total time to solve
 
                     # Store data
@@ -493,20 +504,7 @@ if __name__ == "__main__":
                     markers_target_tries[tries, :, :, :] = markers_target
                     muscles_target_tries[tries, :, :] = muscles_target
 
-                    # Compute muscular force
-                    q_est = X_est[: biorbd_model.nbQ(), :]
-                    dq_est = X_est[biorbd_model.nbQ() : biorbd_model.nbQ() * 2, :]
-                    if use_activation:
-                        a_est = np.zeros((nbMT, Ns))
-                    else:
-                        a_est = X_est[-nbMT:, :]
-                    get_force = force_func(biorbd_model, use_activation=use_activation)
-                    for i in range(biorbd_model.nbMuscles()):
-                        for j in range(int(ceil(Ns / rt_ratio) - Ns_mhe)):
-                            force_est[tries, i, j] = get_force(q_est[:, j], dq_est[:, j], a_est[:, j], U_est[nbGT:, j])[
-                                i, :
-                            ]
-
+                    # Compute reference muscular force
                     get_force = force_func(biorbd_model, use_activation=False)
                     for i in range(biorbd_model.nbMuscles()):
                         for k in range(Ns):
