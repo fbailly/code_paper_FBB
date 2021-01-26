@@ -42,7 +42,9 @@ time_mean_ex = err_mean_ex[:, 3]
 # Plot Frequency figure fonction of windows size
 seaborn.set_style("whitegrid")
 seaborn.color_palette()
-lw = 3  # Line width
+lw = 8  # Line width
+x_y_label = 30
+x_y_ticks = 25
 fig = plt.subplot()
 fig.plot(1 / time_mean_ac, lw=lw, label="activation driven")
 fig.plot(1 / time_mean_ex, lw=lw, label="excitation driven")
@@ -56,10 +58,10 @@ fig.fill_between(
     range(len(time_mean_ex)), 1 / (time_mean_ex + time_std_ex), 1 / (time_mean_ex - time_std_ex), alpha=0.2
 )
 fig.set_xticks(range(len(Nmhe_ac) - 1))
-plt.xticks(fontsize=12)
-plt.yticks(fontsize=12)
+plt.xticks(fontsize=x_y_ticks)
+plt.yticks(fontsize=x_y_ticks)
 fig.set_xticklabels(range(int(Nmhe_ac[0]), int(Nmhe_ac[-2] + 1)))
-plt.legend(fontsize=14)
-plt.ylabel("Freq. (Hz)", fontsize=14)
-plt.xlabel("Size of MHE window", fontsize=14)
+plt.legend(fontsize=x_y_label)
+plt.ylabel("Freq. (Hz)", fontsize=x_y_label)
+plt.xlabel("Size of MHE window", fontsize=x_y_label)
 plt.show()
