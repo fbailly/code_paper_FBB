@@ -10,7 +10,7 @@ from math import ceil
 
 # Configure the plot
 W_LOW_WEIGHTS = True
-INCLUDE_MIN = False
+INCLUDE_MIN = True
 
 # Variables of the problem
 biorbd_model = biorbd.Model("arm_wt_rot_scap.bioMod")
@@ -323,6 +323,7 @@ ax2 = seaborn.boxplot(
     palette=my_pal,
 )
 ax2.set(ylabel="RMSE on joint angle (deg)")
+ax2.set(ylim=(0, 3))
 ax2.xaxis.get_label().set_fontsize(20)
 ax2.yaxis.get_label().set_fontsize(20)
 ax2.tick_params(labelsize=15)
