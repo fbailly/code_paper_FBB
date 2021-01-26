@@ -137,7 +137,6 @@ dmypy.json
 *.npy
 *.bo
 *.bob
-*.ogv
 
 # Remove ACADOS compilation folder
 c_generated_code
