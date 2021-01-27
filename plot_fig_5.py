@@ -1,173 +1,138 @@
-import matplotlib.pyplot as plt
-import numpy as np
 import scipy.io as sio
 import seaborn
-import matplotlib.ticker as ticker
+from utils import *
+import matplotlib.pyplot as plt
 
-# configuration of plot
-use_torque = False
-use_noise = False
-use_log = True  # If plot logarithmic (base 10) error
+# Problem variables
+biorbd_model = biorbd.Model("arm_wt_rot_scap.bioMod")
+T = 8
+start_delay = 25
+Ns = 800 - start_delay
+T = T * (Ns) / 800
+motion = "REACH2"
+nb_try = 30
+count_nc_track = np.zeros((1, 1, 1))
+co_lvl = 4
+muscles_names = [
+    "Pec sternal",
+    "Pec ribs",
+    "Lat thoracic",
+    "Lat lumbar",
+    "Lat iliac",
+    "Delt posterior",
+    "Tri long",
+    "Tri lat",
+    "Tri med",
+    "Brachial",
+    "Brachioradial",
+    "Pec clavicular",
+    "Delt anterior",
+    "Delt middle",
+    "Supraspin",
+    "Infraspin",
+    "Subscap",
+    "Bic long",
+    "Bic short",
+]
 
-nb_try = 1  # Number of try used to generate data
+# Noises informations
+marker_noise_lvl = [0, 0.002, 0.005, 0.01]
+EMG_noise_lvl = [0, 1, 1.5, 2]
 
-# Get data
-matcontent = sio.loadmat("solutions/stats_rt_test_activation_drivenTrue.mat")
-err_ac = matcontent["err_tries"]
-err_ac_mhe = err_ac[:-1, :].reshape(-1, nb_try, 10)
-err_ac_full = err_ac[-1, :].reshape(1, 10)
-err_mean_ac = np.mean(err_ac_mhe, axis=1)
-err_std_ac = np.std(err_ac_mhe, axis=1)
-err_mean_ac_full = np.concatenate((err_mean_ac, err_ac_full))
-Nmhe_ac = err_mean_ac_full[:, 0]
-ratio = err_mean_ac_full[:, 1]
-time_tot_ac = err_mean_ac_full[:, 2]
-time_ac = err_mean_ac_full[:, 3]
-time_std_ac = err_std_ac[:, 3]
-time_mean_ac = err_mean_ac[:, 3]
-if use_log:
-    err_q_ac = np.log10(err_mean_ac_full[:, 4] * 180 / np.pi)
-    err_dq_ac = np.log10(err_mean_ac_full[:, 5])
-    err_muscles_ac = np.log10(err_mean_ac_full[:, 7])
-    err_markers_ac = np.log10(err_mean_ac_full[:, 8])
-    err_force_ac = np.log10(err_mean_ac_full[:, 9])
-else:
-    err_q_ac = err_mean_ac_full[:, 4] * 180 / np.pi
-    err_dq_ac = err_mean_ac_full[:, 5]
-    err_muscles_ac = err_mean_ac_full[:, 7]
-    err_markers_ac = err_mean_ac_full[:, 8]
-    err_force_ac = err_mean_ac_full[:, 9]
-
-matcontent = sio.loadmat("solutions/stats_rt_test_activation_drivenFalse.mat")
-err_ex = matcontent["err_tries"]
-err_ex_mhe = err_ex[:-1, :].reshape(-1, nb_try, 10)
-err_ex_full = err_ex[-1, :].reshape(1, 10)
-err_mean_ex = np.mean(err_ex_mhe, axis=1)
-err_std_ex = np.std(err_ac_mhe, axis=1)
-err_mean_ex_full = np.concatenate((err_mean_ex, err_ex_full))
-Nmhe_ex = err_mean_ex_full[:, 0]
-ratio_ex = err_mean_ex_full[:, 1]
-time_tot_ex = err_mean_ex_full[:, 2]
-time_ex = err_mean_ex_full[:, 3]
-time_std_ex = err_std_ex[:, 3]
-time_mean_ex = err_mean_ex[:, 3]
-if use_log:
-    err_q_ex = np.log10(err_mean_ex_full[:, 4] * 180 / np.pi)
-    err_dq_ex = np.log10(err_mean_ex_full[:, 5])
-    err_muscles_ex = np.log10(err_mean_ex_full[:, 7])
-    err_markers_ex = np.log10(err_mean_ex_full[:, 8])
-    err_force_ex = np.log10(err_mean_ex_full[:, 9])
-else:
-    err_q_ex = err_mean_ex_full[:, 4] * 180 / np.pi
-    err_dq_ex = err_mean_ex_full[:, 5]
-    err_muscles_ex = err_mean_ex_full[:, 7]
-    err_markers_ex = err_mean_ex_full[:, 8]
-    err_force_ex = np.log10(err_mean_ex_full[:, 9])
-
-
-# Configure plot style
-err_ac = "-x"
-err_ex = "-^"
-err_full_ac = "--"
-err_full_ex = "--"
-lw = 1.5
-lw_err = 1.8
-ms_ac = 6
-ms_ex = 4
-mew = 0.08
-err_lim = ":"
-x_y_label_size = 11
-x_y_ticks = 12
-legend_size = 11
-s = 150
-
-# Plot RMSE of Q, markers, muscle force function of windows size (for activation and excitation driven)
-seaborn.color_palette()
-grid_line_style = "--"
-
-fig = plt.figure()
-plt.gcf().subplots_adjust(left=0.06, bottom=-0.80, right=0.99, top=0.90, wspace=0.08, hspace=0.25)
-
-fig = plt.subplot(421)
-plt.title("q")
-plt.grid(axis="x", linestyle=grid_line_style)
-plt.plot(err_q_ac[:-1], err_ac, lw=lw, ms=ms_ac, label="mhe act. driven")
-plt.plot(err_q_ex[:-1], err_ex, lw=lw, ms=ms_ac, mew=mew, label="mhe excit. driven")
-plt.gca().set_prop_cycle(None)
-plt.scatter(4, err_q_ex[4], s=s, facecolors="none", edgecolors="r")
-plt.plot(
-    np.arange(len(Nmhe_ac) - 1),
-    np.tile(err_q_ac[-1], (len(Nmhe_ac) - 1, 1)),
-    err_full_ac,
-    label="full window act. driven",
-)
-plt.plot(
-    np.arange(len(Nmhe_ac) - 1),
-    np.tile(err_q_ex[-1], (len(Nmhe_ac) - 1, 1)),
-    err_full_ex,
-    label="full window excit. driven",
+# Define folder and status file
+fold_w_emg = f"solutions/w_track_emg_rt_exc/"
+fold_wt_emg = f"solutions/wt_track_emg_rt_exc/"
+status_trackEMG = convert_txt_output_to_list(
+    fold_w_emg + "/status_track_rt_EMGTrue.txt", co_lvl, len(marker_noise_lvl), len(EMG_noise_lvl), nb_try
 )
 
-fig.set_xticks(range(len(Nmhe_ac) - 1))
-fig.set_xticklabels([])
-plt.ylabel("Logarithmic error", fontsize=x_y_label_size)
-plt.yticks(fontsize=x_y_ticks)
-plt.gca().yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:,.1f}"))
-plt.gca().yaxis.set_major_locator(ticker.MultipleLocator(0.5))
+# Get all data
+for co in [2]:
+    for marker_lvl in [2]:
+        range_emg = [2]
+        for EMG_lvl in range_emg:
 
-fig = plt.subplot(423)
-plt.title("Muscles force")
-plt.grid(axis="x", linestyle=grid_line_style)
-plt.plot(err_force_ac[:-1], err_ac, lw=lw, ms=ms_ac, label="err. mhe activation driven")
-plt.plot(err_force_ex[:-1], err_ex, lw=lw, ms=ms_ac, mew=mew, label="err. mhe excitation driven")
-plt.gca().set_prop_cycle(None)
-plt.plot(
-    np.arange(len(Nmhe_ac) - 1),
-    np.tile(err_force_ac[-1], (len(Nmhe_ac) - 1, 1)),
-    err_full_ac,
-    label="err. full window activation driven",
-)
-plt.plot(
-    np.arange(len(Nmhe_ac) - 1),
-    np.tile(err_force_ex[-1], (len(Nmhe_ac) - 1, 1)),
-    err_full_ex,
-    label="err. full window excitation driven",
-)
-plt.scatter(4, err_force_ex[4], s=s, facecolors="none", edgecolors="r", label="selected size window")
+            # Get data for optimal (track EMG) and reference movement
+            mat_content = sio.loadmat(
+                f"{fold_w_emg}track_mhe_w_EMG_excitation_driven_co_lvl{co}_noise_lvl_{marker_noise_lvl[marker_lvl]}_{EMG_noise_lvl[EMG_lvl]}.mat"
+            )
+            Nmhe = int(mat_content["N_mhe"])
+            N = mat_content["N_tot"]
+            NS = int(N - Nmhe)
+            ratio = int(mat_content["rt_ratio"])
+            X_est = mat_content["X_est"]
+            U_est = mat_content["U_est"]
+            f_est = mat_content["f_est"]
+            q_ref = mat_content["x_sol"][: biorbd_model.nbQ(), ::ratio][:, :-Nmhe]
+            dq_ref = mat_content["x_sol"][biorbd_model.nbQ() : biorbd_model.nbQ() * 2, ::ratio][:, :-Nmhe]
+            a_ref = mat_content["x_sol"][-biorbd_model.nbMuscles() :, ::ratio][:, :-Nmhe]
+            u_ref = mat_content["u_sol"][:, ::ratio][:, :-Nmhe]
+            f_ref = mat_content["f_ref"][:, ::ratio][:, :-Nmhe]
+            q_ref_try = np.ndarray((nb_try, q_ref.shape[0], q_ref.shape[1]))
+            dq_ref_try = np.ndarray((nb_try, dq_ref.shape[0], dq_ref.shape[1]))
+            a_ref_try = np.ndarray((nb_try, a_ref.shape[0], a_ref.shape[1]))
+            u_ref_try = np.ndarray((nb_try, u_ref.shape[0], u_ref.shape[1]))
+            f_ref_try = np.ndarray((nb_try, f_ref.shape[0], f_ref.shape[1]))
 
-fig.set_xticks(range(len(Nmhe_ac) - 1))
-fig.set_xticklabels(range(int(Nmhe_ac[0]), int(Nmhe_ac[-2] + 1)))
-plt.yticks(fontsize=x_y_ticks)
-plt.ylabel("Logarithmic error", fontsize=x_y_label_size)
-plt.xlabel("Size of MHE window", fontsize=x_y_label_size)
-plt.xticks(fontsize=x_y_ticks)
-plt.legend(ncol=1, bbox_to_anchor=(1.05, 1), loc="upper left", borderaxespad=0.0, fontsize=legend_size, frameon=False)
-plt.gca().yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:,.1f}"))
+            # Take try only if 90% of iterations have converged
+            for i in range(nb_try):
+                if len(status_trackEMG[co][marker_lvl][EMG_lvl][i]) > (10 * ceil((N) / ratio - Nmhe) / 100):
+                    q_ref_try[i, :, :] = np.nan
+                    dq_ref_try[i, :, :] = np.nan
+                    a_ref_try[i, :, :] = np.nan
+                    u_ref_try[i, :, :] = np.nan
+                    f_ref_try[i, :, :] = np.nan
+                    count_nc_track[0, 0, 0] += 1
+                else:
+                    q_ref_try[i, :, :] = q_ref
+                    dq_ref_try[i, :, :] = dq_ref
+                    a_ref_try[i, :, :] = a_ref
+                    u_ref_try[i, :, :] = u_ref
+                    f_ref_try[i, :, :] = f_ref
 
-fig = plt.subplot(422)
-plt.title("Markers")
-plt.grid(axis="x", linestyle=grid_line_style)
-plt.plot(err_markers_ac[:-1], err_ac, lw=lw, ms=ms_ac, label="err. mhe activation driven")
-plt.plot(err_markers_ex[:-1], err_ex, lw=lw, ms=ms_ac, mew=mew, label="err. mhe excitation driven")
-plt.gca().set_prop_cycle(None)
-plt.scatter(4, err_markers_ex[4], s=s, facecolors="none", edgecolors="r")
-plt.plot(
-    np.arange(len(Nmhe_ac) - 1),
-    np.tile(err_markers_ac[-1], (len(Nmhe_ac) - 1, 1)),
-    err_full_ac,
-    label="err. full window activation driven",
-)
-plt.plot(
-    np.arange(len(Nmhe_ac) - 1),
-    np.tile(err_markers_ex[-1], (len(Nmhe_ac) - 1, 1)),
-    err_full_ex,
-    label="err. full window excitatiojn driven",
-)
+            # Get data for optimal (minimize excitations) movement
+            mat_content = sio.loadmat(
+                f"{fold_wt_emg}track_mhe_wt_EMG_excitation_driven_co_lvl{co}_noise_lvl_{marker_noise_lvl[marker_lvl]}_0.mat"
+            )
+            force_est = mat_content["f_est"]
+            force_ref = mat_content["f_ref"][:, ::ratio][:, :-Nmhe]
 
-fig.set_xticks(range(len(Nmhe_ac) - 1))
-fig.set_xticklabels(range(int(Nmhe_ac[0]), int(Nmhe_ac[-2] + 1)))
-plt.xlabel("Size of MHE window", fontsize=x_y_label_size)
-plt.xticks(fontsize=x_y_ticks)
-plt.yticks(fontsize=x_y_ticks)
-plt.gca().yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:,.1f}"))
-plt.show()
+            # compute force mean and STD on all trials
+            force_est_wt_emg = mat_content["f_est"]
+            force_est_wt_emg_mean = np.mean(force_est_wt_emg, axis=0)
+            force_est_wt_emg_STD = np.std(force_est_wt_emg, axis=0)
+            force_est_mean = np.mean(force_est, axis=0)
+            force_est_STD = np.std(force_est, axis=0)
+
+            # Print convergence rate
+            print(f"Number of optimisation: {ceil((Ns)/ratio-Nmhe)}")
+            print(f"Number of optim convergence with EMG tracking: {count_nc_track}")
+            print(f"Convergence rate with EMG tracking: {100 - count_nc_track / nb_try * 100}%")
+
+            # PLot muscular force for reference movement and optimal movement(track and minimize EMG)
+            seaborn.set_style("whitegrid")
+            seaborn.color_palette()
+            fig = plt.figure("Muscles force")
+            plt.gcf().subplots_adjust(left=0.06, right=0.99, wspace=0.25, hspace=0.2)
+            t = np.linspace(0, T, ceil((Ns) / ratio - Nmhe) - 1)
+            for i in range(biorbd_model.nbMuscles()):
+                fig = plt.subplot(4, 5, i + 1)
+                if i in [14, 15, 16, 17, 18]:
+                    plt.xlabel("Time (s)")
+                else:
+                    fig.set_xticklabels([])
+                if i in [0, 5, 10, 15]:
+                    plt.ylabel("Muscle force (N)")
+                    plt.plot(t, force_est_mean[i, 1:], label="Track EMG")
+                plt.plot(t, force_est_wt_emg_mean[i, 1:], label="Minimize EMG")
+                plt.plot(t, force_ref[i, 1:], "r", label="Reference")
+                plt.gca().set_prop_cycle(None)
+                plt.fill_between(
+                    t,
+                    force_est_mean[i, 1:] - force_est_STD[i, 1:],
+                    force_est_mean[i, 1:] + force_est_STD[i, 1:],
+                    alpha=0.5,
+                )
+                plt.title(muscles_names[i])
+            plt.legend(bbox_to_anchor=(1.05, 0.80), loc="upper left", frameon=False)
+            plt.show()
