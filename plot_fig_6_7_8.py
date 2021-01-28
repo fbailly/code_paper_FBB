@@ -34,7 +34,7 @@ EMG_noise_lvl = [0, 1, 1.5, 2, 0]
 EMG_lvl_label = ["track/none", "track/low", "track/mid", "track/high", "minimize/-"]
 co_lvl_label = ["none", "low", "mid", "high"]
 marker_lvl_label = ["none", "low", "mid", "high"]
-weight_lvl_label = ["low" ,"high"]
+weight_lvl_label = ["low", "high"]
 
 # Set RMSE size for minimize controls and track
 RMSEmin = np.ndarray((len(weight_lvl_label) * co_lvl * len(marker_noise_lvl) * len(EMG_noise_lvl) * 5 * nb_try))
@@ -55,10 +55,9 @@ status_minEMG_lw = convert_txt_output_to_list(
 )
 
 # DataFrame stuff
-weight_lvl_df = (
-    [weight_lvl_label[0]] * co_lvl * len(marker_noise_lvl) * len(EMG_noise_lvl) * 5 * nb_try
-    + [weight_lvl_label[1]] * co_lvl * len(marker_noise_lvl) * len(EMG_noise_lvl) * 5 * nb_try
-)
+weight_lvl_df = [weight_lvl_label[0]] * co_lvl * len(marker_noise_lvl) * len(EMG_noise_lvl) * 5 * nb_try + [
+    weight_lvl_label[1]
+] * co_lvl * len(marker_noise_lvl) * len(EMG_noise_lvl) * 5 * nb_try
 
 co_lvl_df = (
     [co_lvl_label[0]] * len(marker_noise_lvl) * len(EMG_noise_lvl) * 5 * nb_try
@@ -68,11 +67,15 @@ co_lvl_df = (
 ) * len(weight_lvl_label)
 
 marker_n_lvl_df = (
-    [marker_lvl_label[0]] * len(EMG_noise_lvl) * 5 * nb_try
-    + [marker_lvl_label[1]] * len(EMG_noise_lvl) * 5 * nb_try
-    + [marker_lvl_label[2]] * len(EMG_noise_lvl) * 5 * nb_try
-    + [marker_lvl_label[3]] * len(EMG_noise_lvl) * 5 * nb_try
-) * len(weight_lvl_label) * co_lvl
+    (
+        [marker_lvl_label[0]] * len(EMG_noise_lvl) * 5 * nb_try
+        + [marker_lvl_label[1]] * len(EMG_noise_lvl) * 5 * nb_try
+        + [marker_lvl_label[2]] * len(EMG_noise_lvl) * 5 * nb_try
+        + [marker_lvl_label[3]] * len(EMG_noise_lvl) * 5 * nb_try
+    )
+    * len(weight_lvl_label)
+    * co_lvl
+)
 
 EMG_n_lvl_df = (
     (
@@ -112,7 +115,7 @@ for weight in weight_lvl_label:
             for EMG_lvl in range(len(EMG_noise_lvl)):
                 # Get data
                 if EMG_lvl_label[EMG_lvl] == "minimize/-":
-                    if weight == 'low':
+                    if weight == "low":
                         mat_content = sio.loadmat(
                             f"{folder_wt_track_lw}/track_mhe_wt_EMG_excitation_driven_co_lvl{co}_noise_lvl_{marker_noise_lvl[marker_lvl]}_{EMG_noise_lvl[EMG_lvl]}.mat"
                         )
@@ -121,7 +124,7 @@ for weight in weight_lvl_label:
                             f"{folder_wt_track}/track_mhe_wt_EMG_excitation_driven_co_lvl{co}_noise_lvl_{marker_noise_lvl[marker_lvl]}_{EMG_noise_lvl[EMG_lvl]}.mat"
                         )
                 else:
-                    if weight == 'low':
+                    if weight == "low":
                         mat_content = sio.loadmat(
                             f"{folder_w_track_lw}/track_mhe_w_EMG_excitation_driven_co_lvl{co}_noise_lvl_{marker_noise_lvl[marker_lvl]}_{EMG_noise_lvl[EMG_lvl]}.mat"
                         )
@@ -155,8 +158,10 @@ for weight in weight_lvl_label:
                 # filled with NaN values
                 for i in range(nb_try):
                     if EMG_lvl_label[EMG_lvl] == "minimize":
-                        if weight == 'low':
-                            if len(status_minEMG_lw[co][marker_lvl][EMG_lvl][i]) > (10 * ceil((N) / ratio - Nmhe) / 100):
+                        if weight == "low":
+                            if len(status_minEMG_lw[co][marker_lvl][EMG_lvl][i]) > (
+                                10 * ceil((N) / ratio - Nmhe) / 100
+                            ):
                                 q_ref_try[i, :, :] = np.nan
                                 dq_ref_try[i, :, :] = np.nan
                                 a_ref_try[i, :, :] = np.nan
@@ -169,7 +174,7 @@ for weight in weight_lvl_label:
                                 a_ref_try[i, :, :] = a_ref
                                 u_ref_try[i, :, :] = u_ref
                                 f_ref_try[i, :, :] = f_ref
-                        if weight == 'high':
+                        if weight == "high":
                             if len(status_minEMG[co][marker_lvl][EMG_lvl][i]) > (10 * ceil((N) / ratio - Nmhe) / 100):
                                 q_ref_try[i, :, :] = np.nan
                                 dq_ref_try[i, :, :] = np.nan
@@ -183,8 +188,10 @@ for weight in weight_lvl_label:
                                 a_ref_try[i, :, :] = a_ref
                                 u_ref_try[i, :, :] = u_ref
                     else:
-                        if weight == 'low':
-                            if len(status_trackEMG_lw[co][marker_lvl][EMG_lvl][i]) > (10 * ceil((N) / ratio - Nmhe) / 100):
+                        if weight == "low":
+                            if len(status_trackEMG_lw[co][marker_lvl][EMG_lvl][i]) > (
+                                10 * ceil((N) / ratio - Nmhe) / 100
+                            ):
                                 q_ref_try[i, :, :] = np.nan
                                 dq_ref_try[i, :, :] = np.nan
                                 a_ref_try[i, :, :] = np.nan
@@ -271,22 +278,31 @@ df_stats = df_stats[df_stats["weight_level"] == "high"]
 df_stats = df_stats[df_stats["RMSE"].notna()]
 df_stats.to_pickle("stats_df_1.pkl")
 aov = pg.anova(dv="RMSE", between=["EMG_objective", "co_contraction_level"], data=df_stats)
-ptt = pg.pairwise_ttests(dv="RMSE", between=[ "co_contraction_level", "EMG_objective",], data=df_stats, padjust="bonf")
+ptt = pg.pairwise_ttests(
+    dv="RMSE",
+    between=[
+        "co_contraction_level",
+        "EMG_objective",
+    ],
+    data=df_stats,
+    padjust="bonf",
+)
 pg.print_table(aov.round(3))
 pg.print_table(ptt.round(3))
 
 # Figure of RMSE on force function of co-contraction level (Fig. 7)
 import matplotlib
-matplotlib.rcParams['legend.handlelength'] = 4
-matplotlib.rcParams['legend.handleheight'] = 2.25
+
+matplotlib.rcParams["legend.handlelength"] = 4
+matplotlib.rcParams["legend.handleheight"] = 2.25
 seaborn.set_style("whitegrid")
-cp = seaborn.color_palette('YlOrRd', 5)
-cp[-1] = (0, 102/255, 153/255)
+cp = seaborn.color_palette("YlOrRd", 5)
+cp[-1] = (0, 102 / 255, 153 / 255)
 plotpd = RMSEtrack_pd[RMSEtrack_pd["component"] == "force"]
-plotpd = plotpd[plotpd["weight_level"] == 'high']
+plotpd = plotpd[plotpd["weight_level"] == "high"]
 
 ax = seaborn.boxplot(
-    y=plotpd['RMSE'],
+    y=plotpd["RMSE"],
     x=plotpd["co_contraction_level"],
     hue=plotpd["EMG_objective"],
     palette=cp,
@@ -317,11 +333,13 @@ df_stats = pd.DataFrame(
 df_stats = df_stats[(RMSEtrack_pd["component"] == "q")]
 df_stats = df_stats[df_stats["RMSE"].notna()]
 df_stats.to_pickle("stats_df_2.pkl")
-aov = pg.anova(dv="RMSE", between=["Marker_noise_level_m", "EMG_objective", "weight_level"], data=df_stats, detailed=True)
+aov = pg.anova(
+    dv="RMSE", between=["Marker_noise_level_m", "EMG_objective", "weight_level"], data=df_stats, detailed=True
+)
 pg.print_table(aov.round(3))
 
-df_stats_lw = df_stats[df_stats["weight_level"] == 'low']
-df_stats_hw = df_stats[df_stats["weight_level"] == 'high']
+df_stats_lw = df_stats[df_stats["weight_level"] == "low"]
+df_stats_hw = df_stats[df_stats["weight_level"] == "high"]
 
 ptt = pg.pairwise_ttests(dv="RMSE", between=["Marker_noise_level_m", "EMG_objective"], data=df_stats_hw, padjust="bonf")
 pg.print_table(ptt.round(3))
@@ -335,8 +353,8 @@ pg.print_table(ptt.round(3))
 
 # Figure of RMSE on joint angle function of marker noise level (Fig. 8-9)
 plotpd = RMSEtrack_pd[RMSEtrack_pd["component"] == "q"]
-plotpd_hw = plotpd[plotpd["weight_level"] == 'high']
-plotpd_lw = plotpd[plotpd["weight_level"] == 'low']
+plotpd_hw = plotpd[plotpd["weight_level"] == "high"]
+plotpd_lw = plotpd[plotpd["weight_level"] == "low"]
 
 
 ax2 = seaborn.boxplot(
@@ -376,4 +394,3 @@ plt.show()
 
 
 plt.show()
-

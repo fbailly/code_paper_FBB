@@ -9,7 +9,7 @@ biorbd_model = biorbd.Model("arm_wt_rot_scap.bioMod")
 T = 8
 start_delay = 25  # Start movement after 25 first nodes
 Ns = 800 - start_delay
-T = T * (Ns) / 800
+# T = T * (Ns) / 800
 final_offset = 5  # Ignore last 5 node when plot EMG
 tau_init = 0
 muscle_init = 0.5
@@ -101,6 +101,7 @@ for i in range(biorbd_model.nbMuscles()):
     if i in [14, 15, 16, 17, 18]:
         plt.xlabel("Time(s)")
         plt.gca().yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:,.3f}"))
+        fig.set_xlim(0, 8)
     else:
         fig.set_xticklabels([])
     if i in [0, 5, 10, 15]:
@@ -119,7 +120,7 @@ for i in range(biorbd_model.nbMuscles()):
     plt.title(muscles_names[i])
 
 for i in range(biorbd_model.nbMuscles()):
-    fig = plt.subplot(4, 5, i + 1)
+    plt.subplot(4, 5, i + 1)
     if i == 18:
         for k in range(0, 1):
             plt.plot(t, mean_emg[k, i, :-final_offset], "red", label=f"Reference")
