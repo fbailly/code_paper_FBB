@@ -81,7 +81,6 @@ if conf["load_data"]:
         file_path = f"solutions/sim_ac_8000ms_800sn_REACH2_co_level_{i}.bob"
         X_ref[i, :, :], U_ref[i, :, :] = get_reference_movement(file_path, conf["use_torque"], nbGT, var["Ns_ref"])
 else:
-    #
     T_mvt = 1
     Ns_mvt = 100
     nb_phase = 8

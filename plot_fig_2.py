@@ -108,24 +108,14 @@ for i in range(biorbd_model.nbMuscles()):
         plt.ylabel("EMG to track")
         plt.gca().yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:,.3f}"))
 
-    if i == 18:
-        for k in range(1, len(EMG_noise_lvl)):
-            plt.plot(t, mean_emg[k, i, :-final_offset], label=f"EMG noise level: {emg_lvl[k-1]}")
-        plt.gca().yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:,.3f}"))
-        # plt.gca().yaxis.set_major_locator(ticker.MultipleLocator(0.5))
-    else:
-        for k in range(1, len(EMG_noise_lvl)):
-            plt.plot(t, mean_emg[k, i, :-final_offset], label=f"EMG noise level: {emg_lvl[k-1]}")
-        plt.gca().yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:,.3f}"))
+    for k in range(1, len(EMG_noise_lvl)):
+        plt.plot(t, mean_emg[k, i, :-final_offset], label=f"EMG noise level: {emg_lvl[k-1]}")
+    plt.gca().yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:,.3f}"))
     plt.title(muscles_names[i])
 
 for i in range(biorbd_model.nbMuscles()):
     plt.subplot(4, 5, i + 1)
-    if i == 18:
-        for k in range(0, 1):
-            plt.plot(t, mean_emg[k, i, :-final_offset], "red", label=f"Reference")
-    else:
-        for k in range(0, 1):
-            plt.plot(t, mean_emg[k, i, :-final_offset], "red", label=f"Reference")
+    for k in range(0, 1):
+        plt.plot(t, mean_emg[k, i, :-final_offset], "red", label=f"Reference")
 plt.legend(bbox_to_anchor=(1.05, 0.80), loc="upper left", frameon=False)
 plt.show()
