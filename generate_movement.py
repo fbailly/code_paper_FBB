@@ -211,7 +211,7 @@ def generate_exc_low_bounds(rate, model_path, X_est, low_exc):
         # Get optimal solution
         data_est = Data.get_data(ocp, sol)
 
-        X_est_co[co, :, :] = np.vstack([data_est[0]["q"], data_est[0]["q_dot"], data_est[0]["muscles"]])
+        X_est_co[co, :, :] = np.vstack([data_est[0]["q"], data_est[0]["qdot"], data_est[0]["muscles"]])
         U_est_co[co, :, :] = data_est[1]["muscles"]
     return X_est_co, U_est_co
 
@@ -296,7 +296,7 @@ def generate_final_data(rate, X_ref, U_ref, save_data, plot):
 
         # Store optimal solutions
         states, controls = Data.get_data(ocp, sol)
-        X_ref_fin[co, :, :] = np.concatenate((states["q"], states["q_dot"], states["muscles"]))
+        X_ref_fin[co, :, :] = np.concatenate((states["q"], states["qdot"], states["muscles"]))
         U_ref_fin[co, :, :] = controls["muscles"]
         # Save results in .bob file if flag is True
         if save_data:
