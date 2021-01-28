@@ -9,10 +9,10 @@ use_torque = False
 use_noise = False
 use_log = True  # If plot logarithmic (base 10) error
 
-nb_try = 1  # Number of try used to generate data
+nb_try = 100  # Number of try used to generate data
 
 # Get data
-matcontent = sio.loadmat("solutions/stats_rt_test_activation_drivenTrue.mat")
+matcontent = sio.loadmat("solutions/stats_rt_activation_drivenTrue.mat")
 err_ac = matcontent["err_tries"]
 err_ac_mhe = err_ac[:-1, :].reshape(-1, nb_try, 10)
 err_ac_full = err_ac[-1, :].reshape(1, 10)
@@ -38,7 +38,7 @@ else:
     err_markers_ac = err_mean_ac_full[:, 8]
     err_force_ac = err_mean_ac_full[:, 9]
 
-matcontent = sio.loadmat("solutions/stats_rt_test_activation_drivenFalse.mat")
+matcontent = sio.loadmat("solutions/stats_rt_activation_drivenFalse.mat")
 err_ex = matcontent["err_tries"]
 err_ex_mhe = err_ex[:-1, :].reshape(-1, nb_try, 10)
 err_ex_full = err_ex[-1, :].reshape(1, 10)
@@ -89,7 +89,7 @@ fig = plt.figure()
 plt.gcf().subplots_adjust(left=0.06, bottom=-0.80, right=0.99, top=0.90, wspace=0.08, hspace=0.25)
 
 fig = plt.subplot(421)
-plt.title("q")
+plt.title("Joint angles")
 plt.grid(axis="x", linestyle=grid_line_style)
 plt.plot(err_q_ac[:-1], err_ac, lw=lw, ms=ms_ac, label="mhe act. driven")
 plt.plot(err_q_ex[:-1], err_ex, lw=lw, ms=ms_ac, mew=mew, label="mhe excit. driven")
@@ -116,7 +116,7 @@ plt.gca().yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:,.1f}"))
 plt.gca().yaxis.set_major_locator(ticker.MultipleLocator(0.5))
 
 fig = plt.subplot(423)
-plt.title("Muscles force")
+plt.title("Muscle forces")
 plt.grid(axis="x", linestyle=grid_line_style)
 plt.plot(err_force_ac[:-1], err_ac, lw=lw, ms=ms_ac, label="err. mhe activation driven")
 plt.plot(err_force_ex[:-1], err_ex, lw=lw, ms=ms_ac, mew=mew, label="err. mhe excitation driven")
@@ -145,7 +145,7 @@ plt.legend(ncol=1, bbox_to_anchor=(1.05, 1), loc="upper left", borderaxespad=0.0
 plt.gca().yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:,.1f}"))
 
 fig = plt.subplot(422)
-plt.title("Markers")
+plt.title("Marker positions")
 plt.grid(axis="x", linestyle=grid_line_style)
 plt.plot(err_markers_ac[:-1], err_ac, lw=lw, ms=ms_ac, label="err. mhe activation driven")
 plt.plot(err_markers_ex[:-1], err_ex, lw=lw, ms=ms_ac, mew=mew, label="err. mhe excitation driven")

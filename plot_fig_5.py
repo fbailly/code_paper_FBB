@@ -11,36 +11,37 @@ Ns = 800 - start_delay
 T = T * (Ns) / 800
 motion = "REACH2"
 nb_try = 30
-count_nc_track = np.zeros((1, 1, 1))
+
 co_lvl = 4
 muscles_names = [
-    "Pec sternal",
-    "Pec ribs",
-    "Lat thoracic",
-    "Lat lumbar",
-    "Lat iliac",
-    "Delt posterior",
-    "Tri long",
-    "Tri lat",
-    "Tri med",
+    "Pec Sternal",
+    "Pec Rib",
+    "Lat Thoracic",
+    "Lat Lumbar",
+    "Lat Iliac",
+    "Delt Posterior",
+    "Tri Long",
+    "Tri Lat",
+    "Tri Med",
     "Brachial",
     "Brachioradial",
-    "Pec clavicular",
-    "Delt anterior",
-    "Delt middle",
+    "Pec Clavicular",
+    "Delt Anterior",
+    "Delt Middle",
     "Supraspin",
     "Infraspin",
     "Subscap",
-    "Bic long",
-    "Bic short",
+    "Bic Long",
+    "Bic Short",
 ]
 
 # Noises informations
 marker_noise_lvl = [0, 0.002, 0.005, 0.01]
 EMG_noise_lvl = [0, 1, 1.5, 2]
+count_nc_track = np.zeros((1, 1, 1))
 
 # Define folder and status file
-fold_w_emg = f"solutions/w_track_emg_rt_exc/"
+fold_w_emg = "solutions/w_track_emg_rt_exc/"
 fold_wt_emg = f"solutions/wt_track_emg_rt_exc/"
 status_trackEMG = convert_txt_output_to_list(
     fold_w_emg + "/status_track_rt_EMGTrue.txt", co_lvl, len(marker_noise_lvl), len(EMG_noise_lvl), nb_try
@@ -51,10 +52,9 @@ for co in [2]:
     for marker_lvl in [2]:
         range_emg = [2]
         for EMG_lvl in range_emg:
-
             # Get data for optimal (track EMG) and reference movement
             mat_content = sio.loadmat(
-                f"{fold_w_emg}track_mhe_w_EMG_excitation_driven_co_lvl{co}_noise_lvl_{marker_noise_lvl[marker_lvl]}_{EMG_noise_lvl[EMG_lvl]}.mat"
+                f"{fold_w_emg}/track_mhe_w_EMG_excitation_driven_co_lvl{co}_noise_lvl_{marker_noise_lvl[marker_lvl]}_{EMG_noise_lvl[EMG_lvl]}.mat"
             )
             Nmhe = int(mat_content["N_mhe"])
             N = mat_content["N_tot"]
@@ -82,7 +82,7 @@ for co in [2]:
                     a_ref_try[i, :, :] = np.nan
                     u_ref_try[i, :, :] = np.nan
                     f_ref_try[i, :, :] = np.nan
-                    count_nc_track[0, 0, 0] += 1
+                    count_nc_track[0][0][0] += 1
                 else:
                     q_ref_try[i, :, :] = q_ref
                     dq_ref_try[i, :, :] = dq_ref
@@ -94,19 +94,18 @@ for co in [2]:
             mat_content = sio.loadmat(
                 f"{fold_wt_emg}track_mhe_wt_EMG_excitation_driven_co_lvl{co}_noise_lvl_{marker_noise_lvl[marker_lvl]}_0.mat"
             )
-            force_est = mat_content["f_est"]
-            force_ref = mat_content["f_ref"][:, ::ratio][:, :-Nmhe]
 
+            force_ref = mat_content["f_ref"][:, ::ratio][:, :-Nmhe]
             # compute force mean and STD on all trials
             force_est_wt_emg = mat_content["f_est"]
             force_est_wt_emg_mean = np.mean(force_est_wt_emg, axis=0)
             force_est_wt_emg_STD = np.std(force_est_wt_emg, axis=0)
-            force_est_mean = np.mean(force_est, axis=0)
-            force_est_STD = np.std(force_est, axis=0)
+            force_est_mean = np.mean(f_est, axis=0)
+            force_est_STD = np.std(f_est, axis=0)
 
             # Print convergence rate
             print(f"Number of optimisation: {ceil((Ns)/ratio-Nmhe)}")
-            print(f"Number of optim convergence with EMG tracking: {count_nc_track}")
+            print(f"Number of non convergence with EMG tracking: {count_nc_track}")
             print(f"Convergence rate with EMG tracking: {100 - count_nc_track / nb_try * 100}%")
 
             # PLot muscular force for reference movement and optimal movement(track and minimize EMG)
@@ -119,11 +118,12 @@ for co in [2]:
                 fig = plt.subplot(4, 5, i + 1)
                 if i in [14, 15, 16, 17, 18]:
                     plt.xlabel("Time (s)")
+                    fig.set_xlim(0, 8)
                 else:
                     fig.set_xticklabels([])
                 if i in [0, 5, 10, 15]:
                     plt.ylabel("Muscle force (N)")
-                    plt.plot(t, force_est_mean[i, 1:], label="Track EMG")
+                plt.plot(t, force_est_mean[i, 1:], label="Track EMG")
                 plt.plot(t, force_est_wt_emg_mean[i, 1:], label="Minimize EMG")
                 plt.plot(t, force_ref[i, 1:], "r", label="Reference")
                 plt.gca().set_prop_cycle(None)
