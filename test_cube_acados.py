@@ -53,9 +53,14 @@ def prepare_ocp(biorbd_model_path, problem_type_custom=True, ode_solver=OdeSolve
 
     # Add objective functions
     objective_functions = ObjectiveList()
-    objective_functions.add(Objective.Mayer.MINIMIZE_STATE, weight=1000, states_idx=[0, 1], target=np.array([[1., 2.]]).T)
-    objective_functions.add(Objective.Mayer.MINIMIZE_STATE, weight=10000, states_idx=[2], target=np.array([[3.]]))
-    objective_functions.add(Objective.Lagrange.MINIMIZE_TORQUE, weight=1,)
+    objective_functions.add(
+        Objective.Mayer.MINIMIZE_STATE, weight=1000, states_idx=[0, 1], target=np.array([[1.0, 2.0]]).T
+    )
+    objective_functions.add(Objective.Mayer.MINIMIZE_STATE, weight=10000, states_idx=[2], target=np.array([[3.0]]))
+    objective_functions.add(
+        Objective.Lagrange.MINIMIZE_TORQUE,
+        weight=1,
+    )
 
     # Dynamics
     dynamics = DynamicsTypeList()
@@ -63,7 +68,6 @@ def prepare_ocp(biorbd_model_path, problem_type_custom=True, ode_solver=OdeSolve
         dynamics.add(custom_configure, dynamic_function=custom_dynamic)
     else:
         dynamics.add(DynamicsType.TORQUE_DRIVEN, dynamic_function=custom_dynamic)
-
 
     # Path constraint
     x_bounds = BoundsOption(QAndQDotBounds(biorbd_model))
@@ -92,7 +96,7 @@ def prepare_ocp(biorbd_model_path, problem_type_custom=True, ode_solver=OdeSolve
         u_bounds,
         objective_functions,
         ode_solver=ode_solver,
-        use_SX=use_SX
+        use_SX=use_SX,
     )
 
 
@@ -105,15 +109,19 @@ if __name__ == "__main__":
     result.graphs()
 
     objective_functions = ObjectiveList()
-    objective_functions.add(Objective.Mayer.MINIMIZE_STATE, weight=1, states_idx=[0, 1], target=np.array([[1., 2.]]).T)
-    objective_functions.add(Objective.Mayer.MINIMIZE_STATE, weight=10000, states_idx=[2], target=np.array([[3.]]))
-    objective_functions.add(Objective.Lagrange.MINIMIZE_TORQUE, weight=10,)
+    objective_functions.add(
+        Objective.Mayer.MINIMIZE_STATE, weight=1, states_idx=[0, 1], target=np.array([[1.0, 2.0]]).T
+    )
+    objective_functions.add(Objective.Mayer.MINIMIZE_STATE, weight=10000, states_idx=[2], target=np.array([[3.0]]))
+    objective_functions.add(
+        Objective.Lagrange.MINIMIZE_TORQUE,
+        weight=10,
+    )
     ocp.update_objectives(objective_functions)
 
     solver_options = {"nlp_solver_tol_stat": 1e-2}
 
     sol = ocp.solve(solver=Solver.ACADOS, show_online_optim=False, solver_options=solver_options)
-
 
     # --- Show results --- #
     result = ShowResult(ocp, sol)

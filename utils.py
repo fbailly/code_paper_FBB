@@ -1,12 +1,26 @@
 import numpy as np
 from casadi import MX, Function, horzcat
 from math import *
-from bioptim import Data
 import biorbd
 import csv
 import warnings
 import scipy
 import scipy.fftpack
+import pickle
+import matplotlib.pyplot as plt
+from bioptim import (
+    OptimalControlProgram,
+    ObjectiveList,
+    ObjectiveFcn,
+    DynamicsList,
+    DynamicsFcn,
+    BoundsList,
+    QAndQDotBounds,
+    InitialGuess,
+    Data,
+    InterpolationType,
+    Bounds,
+)
 
 
 # Use biorbd function for inverse kinematics
@@ -319,3 +333,240 @@ def switch_phase(ocp, sol):
     exc = data[1]["muscles"]
     x = np.vstack([q, dq, act])
     return x[:, :-1], exc[:, :-1], x[:, -1]
+
+
+def define_objective(
+    use_activation,
+    use_torque,
+    TRACK_EMG,
+    iter,
+    rt_ratio,
+    nbGT,
+    Ns_mhe,
+    muscles_target,
+    markers_target,
+    with_low_weight,
+    biorbd_model,
+    idx,
+    TRACK_LESS_EMG=False,
+):
+    objectives = ObjectiveList()
+    idx = idx if TRACK_LESS_EMG else range(biorbd_model.nbMuscles())
+    if TRACK_EMG:
+        if with_low_weight:
+            w_marker = 10000000
+            w_control = 1000000
+        else:
+            w_marker = 1000000000
+            w_control = 1000000
+        w_torque = 100000000
+        objectives.add(
+            ObjectiveFcn.Lagrange.TRACK_MUSCLES_CONTROL,
+            weight=w_control,
+            target=muscles_target[idx, iter * rt_ratio : (Ns_mhe + iter) * rt_ratio : rt_ratio],
+            index=idx,
+        )
+        if TRACK_LESS_EMG:
+            objectives.add(ObjectiveFcn.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=10000)
+        if use_torque:
+            objectives.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=w_torque)
+    else:
+        if with_low_weight:
+            w_marker = 1000000
+        else:
+            w_marker = 10000000
+        w_control = 10000
+        w_torque = 10000000
+        objectives.add(
+            ObjectiveFcn.Lagrange.MINIMIZE_MUSCLES_CONTROL,
+            weight=w_control,
+        )
+        if use_torque:
+            objectives.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=w_torque)
+
+    objectives.add(
+        ObjectiveFcn.Lagrange.TRACK_MARKERS,
+        weight=w_marker,
+        target=markers_target[:, :, iter * rt_ratio : (Ns_mhe + 1 + iter) * rt_ratio : rt_ratio],
+    )
+    objectives.add(ObjectiveFcn.Lagrange.MINIMIZE_STATE, weight=1, index=np.array(range(biorbd_model.nbQ())))
+    objectives.add(
+        ObjectiveFcn.Lagrange.MINIMIZE_STATE,
+        weight=10,
+        index=np.array(range(biorbd_model.nbQ(), biorbd_model.nbQ() * 2)),
+    )
+    if use_activation is not True:
+        objectives.add(
+            ObjectiveFcn.Lagrange.MINIMIZE_STATE,
+            weight=1,
+            index=np.array(range(biorbd_model.nbQ() * 2, biorbd_model.nbQ() * 2 + biorbd_model.nbMuscles())),
+        )
+    return objectives
+
+
+def get_reference_movement(file, use_torque, nbGT, Ns):
+    with open(file, "rb") as file:
+        data = pickle.load(file)
+    states = data["data"][0]
+    controls = data["data"][1]
+    q_ref = states["q"]
+    dq_ref = states["q_dot"]
+    a_ref = states["muscles"]
+    w_tau = "tau" in controls.keys()  # Check if there are residuals torques
+    tau = controls["tau"] if w_tau else np.zeros((nbGT, Ns + 1))
+    if use_torque:
+        u_ref = np.concatenate((tau, controls["muscles"]))
+    else:
+        u_ref = controls["muscles"]
+    return np.concatenate((q_ref, dq_ref, a_ref)), u_ref
+
+
+def plot_MHE_results(
+    biorbd_model,
+    X_est,
+    q_ref,
+    Ns,
+    rt_ratio,
+    nbQ,
+    dq_ref,
+    U_est,
+    u_ref,
+    nbGT,
+    muscles_target,
+    force_est,
+    force_ref,
+    tries,
+    markers_target,
+    use_torque,
+):
+    plt.figure("q")
+    for i in range(biorbd_model.nbQ()):
+        plt.subplot(3, 2, i + 1)
+        plt.plot(X_est[i, :], "x")
+        plt.plot(q_ref[i, 0 : Ns + 1 : rt_ratio])
+    plt.legend(labels=["q_est", "q_ref"], bbox_to_anchor=(1.05, 1), loc="upper left", borderaxespad=0.0)
+
+    plt.figure("qdot")
+    for i in range(biorbd_model.nbQ(), biorbd_model.nbQ() * 2):
+        plt.subplot(3, 2, i - nbQ + 1)
+        plt.plot(X_est[i, :], "x")
+        plt.plot(dq_ref[i - nbQ, 0 : Ns + 1 : rt_ratio])
+    plt.legend(labels=["q_est", "q_ref"], bbox_to_anchor=(1.05, 1), loc="upper left", borderaxespad=0.0)
+    if use_torque:
+        plt.figure("Tau")
+        for i in range(biorbd_model.nbQ()):
+            plt.subplot(3, 2, i + 1)
+            plt.plot(U_est[i, :], "x")
+            plt.plot(u_ref[i, 0 : Ns + 1 : rt_ratio])
+            plt.plot(muscles_target[i, :], "k--")
+        plt.legend(labels=["Tau_est", "Tau_ref"], bbox_to_anchor=(1.05, 1), loc="upper left", borderaxespad=0.0)
+
+    plt.figure("Muscles excitations")
+    for i in range(biorbd_model.nbMuscles()):
+        plt.subplot(4, 5, i + 1)
+        plt.plot(U_est[nbGT + i, :])
+        plt.plot(u_ref[nbGT + i, 0:Ns:rt_ratio], c="red")
+        plt.plot(muscles_target[nbGT + i, 0:Ns:rt_ratio], "k--")
+        plt.title(biorbd_model.muscleNames()[i].to_string())
+    plt.legend(
+        labels=["u_est", "u_ref", "u_with_noise"],
+        bbox_to_anchor=(1.05, 1),
+        loc="upper left",
+        borderaxespad=0.0,
+    )
+
+    plt.figure("Muscles_force")
+    for i in range(biorbd_model.nbMuscles()):
+        plt.subplot(4, 5, i + 1)
+        plt.plot(force_est[tries, i, :])
+        plt.plot(force_ref[i, 0:Ns:rt_ratio], c="red")
+        plt.title(biorbd_model.muscleNames()[i].to_string())
+    plt.legend(labels=["f_est", "f_ref"], bbox_to_anchor=(1.05, 1), loc="upper left", borderaxespad=0.0)
+    get_markers = markers_fun(biorbd_model)
+    markers = np.zeros((3, biorbd_model.nbMarkers(), q_ref.shape[1]))
+    for i in range(q_ref.shape[1]):
+        markers[:, :, i] = get_markers(q_ref[:, i])
+    markers_est = np.zeros((3, biorbd_model.nbMarkers(), X_est.shape[1]))
+    for i in range(X_est.shape[1]):
+        markers_est[:, :, i] = get_markers(X_est[: biorbd_model.nbQ(), i])
+
+    plt.figure("Markers")
+    for i in range(markers_target.shape[1]):
+        plt.plot(markers_target[:, i, 0:Ns:rt_ratio].T, "k")
+        plt.plot(markers[:, i, 0:Ns:rt_ratio].T, "r--")
+        plt.plot(markers_est[:, i, :].T, "b")
+    plt.xlabel("Time")
+    plt.ylabel("Markers Position")
+
+    return plt.show()
+
+
+def prepare_ocp(
+    biorbd_model,
+    final_time,
+    x0,
+    nbGT,
+    number_shooting_points,
+    use_SX=False,
+    nb_threads=8,
+    use_torque=False,
+    use_activation=False,
+):
+    # --- Options --- #
+    # Model path
+    biorbd_model = biorbd_model
+    nbGT = nbGT
+    nbMT = biorbd_model.nbMuscleTotal()
+    tau_min, tau_max, tau_init = -100, 100, 0
+    muscle_min, muscle_max, muscle_init = 0, 1, 0.5
+    activation_min, activation_max, activation_init = 0, 1, 0.2
+
+    # Add objective functions
+    objective_functions = ObjectiveList()
+
+    # Dynamics
+    dynamics = DynamicsList()
+    if use_activation and use_torque:
+        dynamics.add(DynamicsFcn.MUSCLE_ACTIVATIONS_AND_TORQUE_DRIVEN)
+    elif use_activation is not True and use_torque:
+        dynamics.add(DynamicsFcn.MUSCLE_EXCITATIONS_AND_TORQUE_DRIVEN)
+    elif use_activation and use_torque is not True:
+        dynamics.add(DynamicsFcn.MUSCLE_ACTIVATIONS_DRIVEN)
+    elif use_activation is not True and use_torque is not True:
+        dynamics.add(DynamicsFcn.MUSCLE_EXCITATIONS_DRIVEN)
+
+    # State path constraint
+    x_bounds = BoundsList()
+    x_bounds.add(bounds=QAndQDotBounds(biorbd_model))
+    if use_activation is not True:
+        x_bounds[0].concatenate(
+            Bounds([activation_min] * biorbd_model.nbMuscles(), [activation_max] * biorbd_model.nbMuscles())
+        )
+
+    # Control path constraint
+    u_bounds = BoundsList()
+    u_bounds.add(
+        [tau_min] * nbGT + [muscle_min] * biorbd_model.nbMuscleTotal(),
+        [tau_max] * nbGT + [muscle_max] * biorbd_model.nbMuscleTotal(),
+    )
+
+    # Initial guesses
+    x_init = InitialGuess(np.tile(x0, (number_shooting_points + 1, 1)).T, interpolation=InterpolationType.EACH_FRAME)
+
+    u0 = np.array([tau_init] * nbGT + [muscle_init] * nbMT)
+    u_init = InitialGuess(np.tile(u0, (number_shooting_points, 1)).T, interpolation=InterpolationType.EACH_FRAME)
+    # ------------- #
+
+    return OptimalControlProgram(
+        biorbd_model,
+        dynamics,
+        number_shooting_points,
+        final_time,
+        x_init,
+        u_init,
+        x_bounds,
+        u_bounds,
+        objective_functions,
+        use_SX=use_SX,
+        nb_threads=nb_threads,
+    )
