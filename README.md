@@ -5,10 +5,17 @@ This piece of code depends on the [*bioptim*](https://github.com/pyomeca/bioptim
 
 # How to use ?
 
-For a basic use, 
-
-# Reproducing the paper results
-
-First, you need to generate the full dataset studied in the paper. 
+We recommend you install *bioptim* and *acados* following these [instructions](https://github.com/pyomeca/bioptim#how-to-install).
+Then you can run *main_script.py* by adjusting the flags at the beggining of the code.
+For a first use, you will need to generate the dataset used in the paper.
 To do so :
-
+```
+"load_data": False,
+```
+If you don't want to generate the full dataset (it would take several hours), you can adjust the following values of the ```var``` dictionnary :
+```
+    "nb_try": 30, # number of trials per condition
+    "marker_noise_lvl": [0, 0.002, 0.005, 0.01],
+    "EMG_noise_lvl": [0, 1, 1.5, 2],
+    "nb_co_lvl": 4,
+```
