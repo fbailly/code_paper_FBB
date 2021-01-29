@@ -229,7 +229,7 @@ def warm_start_mhe(ocp, sol, use_activation=False):
     # Define problem variable
     data = Data.get_data(ocp, sol)
     q = data[0]["q"]
-    dq = data[0]["q_dot"]
+    dq = data[0]["qdot"]
     w_tau = "tau" in data[1].keys()
 
     # Store data
@@ -328,7 +328,7 @@ def generate_noise(model, q, excitations, marker_noise_level, EMG_noise_level):
 def switch_phase(ocp, sol):
     data = Data.get_data(ocp, sol)
     q = data[0]["q"]
-    dq = data[0]["q_dot"]
+    dq = data[0]["qdot"]
     act = data[0]["muscles"]
     exc = data[1]["muscles"]
     x = np.vstack([q, dq, act])
@@ -567,6 +567,6 @@ def prepare_ocp(
         x_bounds,
         u_bounds,
         objective_functions,
-        use_SX=use_SX,
-        nb_threads=nb_threads,
+        use_sx=use_SX,
+        n_threads=nb_threads,
     )
