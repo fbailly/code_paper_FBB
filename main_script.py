@@ -9,7 +9,7 @@ model_path = "arm_wt_rot_scap.bioMod"
 biorbd_model = biorbd.Model(model_path)
 
 conf = {
-    "load_data": True,
+    "load_data": False,
     "use_torque": False,
     "use_activation": False,
     "save_status": False,
@@ -17,9 +17,9 @@ conf = {
     "WRITE_STATS": False,
     "TRACK_EMG": True,
     "plot": True,
-    "use_noise": False,
+    "use_noise": True,
     "use_co": False,
-    "use_try": False,
+    "use_try": True,
     "with_low_weight": False,
 }
 use_N_elec = True if conf["use_activation"] else False
@@ -54,8 +54,8 @@ var = {
     "N_elec": 2,  # Set how much node represent well the electromechanical delay (~0.02s)
     "final_offset": 30,  # Number of last nodes to ignore when calculate RMSE
     "init_offset": 5,  # Number of first nodes to ignore when calculate RMSE
-    "Ns_mhe": 7,
-    "nb_try": 30,
+    "Ns_mhe": 7, # MHE window size
+    "nb_try": 30, # number of trials per condition
     "marker_noise_lvl": [0, 0.002, 0.005, 0.01],
     "EMG_noise_lvl": [0, 1, 1.5, 2],
     "set_ratio": set_ratio,
@@ -77,10 +77,12 @@ nb_co_lvl = 4
 X_ref = np.ndarray((nb_co_lvl, biorbd_model.nbQ() * 2 + biorbd_model.nbMuscles(), var["Ns_ref"] + 1))
 U_ref = np.ndarray((nb_co_lvl, biorbd_model.nbMuscles(), var["Ns_ref"] + 1))
 if conf["load_data"]:
+    print("Loading reference data...")
     for i in range(nb_co_lvl):
         file_path = f"solutions/sim_ac_8000ms_800sn_REACH2_co_level_{i}.bob"
         X_ref[i, :, :], U_ref[i, :, :] = get_reference_movement(file_path, conf["use_torque"], nbGT, var["Ns_ref"])
 else:
+    print("Generating reference data...")
     T_mvt = 1
     Ns_mvt = 100
     nb_phase = 8
@@ -111,8 +113,10 @@ EMG_noise_lvl = var["EMG_noise_lvl"] if conf["use_noise"] else [0]
 
 # Set size of optimal states and controls
 if conf["use_activation"]:
+    print("Using activation-driven formulation...")
     var["X_est"] = np.zeros((biorbd_model.nbQ() * 2, ceil((Ns + 1) / rt_ratio) - Ns_mhe))
 else:
+    print("Using excitation-driven formulation...")
     var["X_est"] = np.zeros((biorbd_model.nbQ() * 2 + biorbd_model.nbMuscles(), ceil((Ns + 1) / rt_ratio) - Ns_mhe))
 var["U_est"] = np.zeros((nbGT + biorbd_model.nbMuscleTotal(), ceil(Ns / rt_ratio) - Ns_mhe))
 

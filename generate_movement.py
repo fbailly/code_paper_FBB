@@ -19,7 +19,7 @@ from bioptim import (
 )
 
 
-def prepare_ocp(biorbd_model, final_time, number_shooting_points, x0, use_SX=False, nb_threads=8):
+def prepare_ocp(biorbd_model, final_time, number_shooting_points, x0, use_sx=False, n_threads=8):
     # --- Options --- #
     # Model path
     activation_min, activation_max, activation_init = 0, 1, 0.1
@@ -63,8 +63,8 @@ def prepare_ocp(biorbd_model, final_time, number_shooting_points, x0, use_SX=Fal
         x_bounds,
         u_bounds,
         objective_functions,
-        use_SX=use_SX,
-        nb_threads=nb_threads,
+        use_sx=use_sx,
+        n_threads=n_threads,
     )
 
 
@@ -77,7 +77,7 @@ def generate_state(model_path, T, Ns, nb_phase, x_phase):
     # Set the joint angles target for each phase
     x0 = x_phase[0, :]
     # Build graph
-    ocp = prepare_ocp(biorbd_model=biorbd_model, final_time=T, number_shooting_points=Ns, x0=x0, use_SX=True)
+    ocp = prepare_ocp(biorbd_model=biorbd_model, final_time=T, number_shooting_points=Ns, x0=x0, use_sx=True)
     x0 = np.concatenate((x0, np.array([0.2] * biorbd_model.nbMuscles())))
     # Solve for each phase
     for phase in range(1, nb_phase + 1):
@@ -151,7 +151,7 @@ def generate_exc_low_bounds(rate, model_path, X_est, low_exc):
         excitations_min.append([[0] * 6 + [low_exc[i]] * 3 + [0] * 10])
     x0 = np.hstack([q_ref[:, 0], dq_ref[:, 0]])
     # Build the graph
-    ocp = prepare_ocp(biorbd_model=biorbd_model, final_time=T, x0=x0, number_shooting_points=Ns, use_SX=True)
+    ocp = prepare_ocp(biorbd_model=biorbd_model, final_time=T, x0=x0, number_shooting_points=Ns, use_sx=True)
     X_est_co = np.ndarray((len(excitations_init), biorbd_model.nbQ() * 2 + biorbd_model.nbMuscles(), X_est.shape[1]))
     U_est_co = np.ndarray((len(excitations_init), biorbd_model.nbMuscles(), Ns + 1))
     # Solve for all co-contraction levels
