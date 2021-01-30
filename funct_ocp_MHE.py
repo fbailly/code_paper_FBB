@@ -33,17 +33,18 @@ def run_mhe(model_path, ocp, var, conf, fold):
         TRACK_LESS_EMG = False
     # Set number of tries
     nb_try = var["nb_try"] if conf["use_try"] else 1
-
+    len_u = ceil((Ns / rt_ratio) - Ns_mhe) if conf["full_windows"] is not True else Ns
     # Set variables' shape for all tries
     X_est_tries = np.ndarray((nb_try, X_est.shape[0], X_est.shape[1]))
     U_est_tries = np.ndarray((nb_try, U_est.shape[0], U_est.shape[1]))
     markers_target_tries = np.ndarray((nb_try, markers_target.shape[0], markers_target.shape[1], Ns + 1))
     muscles_target_tries = np.ndarray((nb_try, muscles_target.shape[0], Ns + 1))
     force_ref = np.ndarray((biorbd_model.nbMuscles(), Ns))
-    force_est = np.ndarray((nb_try, biorbd_model.nbMuscles(), int(ceil(Ns / rt_ratio) - Ns_mhe)))
+    force_est = np.ndarray((nb_try, biorbd_model.nbMuscles(), len_u))
 
     err_tries = np.ndarray((nb_try, 10))
     # Loop for simulate some tries, generate new random noise to each try
+    toc = []
     for tries in range(nb_try):
         # Print current optimisation configuration
         print(
@@ -80,6 +81,7 @@ def run_mhe(model_path, ocp, var, conf, fold):
         u_init = InitialGuess(u0[:, 0], interpolation=InterpolationType.CONSTANT)
         ocp.update_initial_guess(x_init, u_init)
 
+        N = Ns if conf["full_windows"] else Ns_mhe
         # Update objectives functions
         ocp.update_objectives(
             define_objective(
@@ -89,17 +91,22 @@ def run_mhe(model_path, ocp, var, conf, fold):
                 0,
                 rt_ratio,
                 nbGT,
-                Ns_mhe,
+                N,
                 muscles_target,
                 markers_target,
                 conf["with_low_weight"],
                 biorbd_model,
                 idx=idx,
                 TRACK_LESS_EMG=TRACK_LESS_EMG,
+                full_windows=conf["full_windows"]
             )
         )
 
         # Initialize the solver options
+        if conf["full_windows"]:
+            tic = time()
+        else:
+            tic = []
         if co == 0 and marker_lvl == 0 and EMG_lvl == 0 and tries == 0:
             sol = ocp.solve(
                 solver=Solver.ACADOS,
@@ -136,74 +143,96 @@ def run_mhe(model_path, ocp, var, conf, fold):
                 f = open(f"{fold}status_track_rt_EMG{conf['TRACK_EMG']}.txt", "a")
             f.write(f"{Ns_mhe}; {co}; {marker_lvl}; {EMG_lvl}; {tries}; " f"'init'\n")
             f.close()
-
-        # Set solutions and set initial guess for next optimisation
-        x0, u0, X_est[:, 0], U_est[:, 0] = warm_start_mhe(ocp, sol, use_activation=conf["use_activation"])
-
-        tic = time()  # Save initial time
-        for iter in range(1, ceil(Ns / rt_ratio - Ns_mhe)):
-            # set initial state
-            ocp.nlp[0].x_bounds.min[:, 0] = x0[:, 0]
-            ocp.nlp[0].x_bounds.max[:, 0] = x0[:, 0]
-
-            # Update initial guess
-            x_init = InitialGuess(x0, interpolation=InterpolationType.EACH_FRAME)
-            u_init = InitialGuess(u0, interpolation=InterpolationType.EACH_FRAME)
-            ocp.update_initial_guess(x_init, u_init)
-
-            # Update objectives functions
-            ocp.update_objectives(
-                define_objective(
-                    conf["use_activation"],
-                    conf["use_torque"],
-                    conf["TRACK_EMG"],
-                    iter,
-                    rt_ratio,
-                    nbGT,
-                    Ns_mhe,
-                    muscles_target,
-                    markers_target,
-                    conf["with_low_weight"],
-                    biorbd_model,
-                    idx,
-                    TRACK_LESS_EMG=TRACK_LESS_EMG,
-                )
-            )
-
-            # Solve problem
-            sol = ocp.solve(
-                solver=Solver.ACADOS,
-                show_online_optim=False,
-                solver_options={
-                    "nlp_solver_tol_comp": 1e-4,
-                    "nlp_solver_tol_eq": 1e-4,
-                    "nlp_solver_tol_stat": 1e-4,
-                },
-            )
-            # Set solutions and set initial guess for next optimisation
-            x0, u0, X_est[:, iter], u_out = warm_start_mhe(ocp, sol, use_activation=conf["use_activation"])
-            if iter < int((Ns / rt_ratio) - Ns_mhe):
-                U_est[:, iter] = u_out
-
+        iter = 1
+        if conf["full_windows"]:
+            states, controls = Data.get_data(ocp, sol)
+            q, qdot = states["q"], states["qdot"]
+            u = controls["muscles"]
+            X_est = np.vstack([q, qdot]) if conf["use_activation"] else np.vstack([q, qdot, states["muscles"]])
+            w_tau = "tau" in controls.keys()
+            if w_tau:
+                U_est = np.vstack([controls["tau"], u])[:, :Ns]
+            else:
+                U_est = u[:, :Ns]
             # Compute muscular force at each iteration
             q_est = X_est[: biorbd_model.nbQ(), :]
-            dq_est = X_est[biorbd_model.nbQ() : biorbd_model.nbQ() * 2, :]
+            dq_est = X_est[biorbd_model.nbQ(): biorbd_model.nbQ() * 2, :]
             a_est = np.zeros((nbMT, Ns)) if conf["use_activation"] else X_est[-nbMT:, :]
-            for i in range(biorbd_model.nbMuscles()):
-                for j in [iter]:
-                    force_est[tries, i, j] = var["get_force"](q_est[:, j], dq_est[:, j], a_est[:, j], U_est[nbGT:, j])[
-                        i, :
-                    ]
-            # Save status of optimisation
-            if sol["status"] != 0 and conf["save_status"]:
-                if conf["TRACK_EMG"]:
-                    f = open(f"{fold}status_track_rt_EMG{conf['TRACK_EMG']}.txt", "a")
-                else:
-                    f = open(f"{fold}status_track_rt_EMG{conf['TRACK_EMG']}.txt", "a")
-                f.write(f"{Ns_mhe}; {co}; {marker_lvl}; {EMG_lvl}; {tries}; " f"{iter}\n")
-                f.close()
+            for t in range(nb_try):
+                for i in range(biorbd_model.nbMuscles()):
+                    for k in range(Ns):
+                        force_est[t, i, k] = var["get_force"](
+                            q_est[:, k], dq_est[:, k], a_est[:, k], U_est[nbGT:, k]
+                        )[i, :]
+            toc = tic - time()
+        else:
+            # Set solutions and set initial guess for next optimisation
+            x0, u0, X_est[:, 0], U_est[:, 0] = warm_start_mhe(ocp, sol, use_activation=conf["use_activation"])
 
-        toc = time() - tic  # Save total time to solve
+            tic = time()  # Save initial time
+            for iter in range(1, int(ceil(Ns / rt_ratio - Ns_mhe))):
+                # set initial state
+                ocp.nlp[0].x_bounds.min[:, 0] = x0[:, 0]
+                ocp.nlp[0].x_bounds.max[:, 0] = x0[:, 0]
+
+                # Update initial guess
+                x_init = InitialGuess(x0, interpolation=InterpolationType.EACH_FRAME)
+                u_init = InitialGuess(u0, interpolation=InterpolationType.EACH_FRAME)
+                ocp.update_initial_guess(x_init, u_init)
+
+                # Update objectives functions
+                ocp.update_objectives(
+                    define_objective(
+                        conf["use_activation"],
+                        conf["use_torque"],
+                        conf["TRACK_EMG"],
+                        iter,
+                        rt_ratio,
+                        nbGT,
+                        Ns_mhe,
+                        muscles_target,
+                        markers_target,
+                        conf["with_low_weight"],
+                        biorbd_model,
+                        idx,
+                        TRACK_LESS_EMG=TRACK_LESS_EMG,
+                    )
+                )
+
+                # Solve problem
+                sol = ocp.solve(
+                    solver=Solver.ACADOS,
+                    show_online_optim=False,
+                    solver_options={
+                        "nlp_solver_tol_comp": 1e-4,
+                        "nlp_solver_tol_eq": 1e-4,
+                        "nlp_solver_tol_stat": 1e-4,
+                    },
+                )
+                # Set solutions and set initial guess for next optimisation
+                x0, u0, X_est[:, iter], u_out = warm_start_mhe(ocp, sol, use_activation=conf["use_activation"])
+                if iter < int((Ns / rt_ratio) - Ns_mhe):
+                    U_est[:, iter] = u_out
+
+                # Compute muscular force at each iteration
+                q_est = X_est[: biorbd_model.nbQ(), :]
+                dq_est = X_est[biorbd_model.nbQ() : biorbd_model.nbQ() * 2, :]
+                a_est = np.zeros((nbMT, Ns)) if conf["use_activation"] else X_est[-nbMT:, :]
+                for i in range(biorbd_model.nbMuscles()):
+                    for j in [iter]:
+                        force_est[tries, i, j] = var["get_force"](q_est[:, j], dq_est[:, j], a_est[:, j], U_est[nbGT:, j])[
+                            i, :
+                        ]
+                # Save status of optimisation
+                if sol["status"] != 0 and conf["save_status"]:
+                    if conf["TRACK_EMG"]:
+                        f = open(f"{fold}status_track_rt_EMG{conf['TRACK_EMG']}.txt", "a")
+                    else:
+                        f = open(f"{fold}status_track_rt_EMG{conf['TRACK_EMG']}.txt", "a")
+                    f.write(f"{Ns_mhe}; {co}; {marker_lvl}; {EMG_lvl}; {tries}; " f"{iter}\n")
+                    f.close()
+
+            toc = time() - tic  # Save total time to solve
         # Store data
         X_est_tries[tries, :, :], U_est_tries[tries, :, :] = X_est, U_est
         markers_target_tries[tries, :, :, :] = markers_target
@@ -220,27 +249,27 @@ def run_mhe(model_path, ocp, var, conf, fold):
         print(f"Total time to solve with ACADOS : {toc} s")
         print(f"Time per MHE iter. : {toc/iter} s")
         tau = np.zeros((nbGT, Ns + 1))
+        err_offset = 0 if conf["full_windows"] else Ns_mhe
         # Compute and print RMSE
-        err_offset = Ns_mhe
-        err = compute_err_mhe(
-            var["init_offset"],
-            var["final_offset"],
-            err_offset,
-            X_est,
-            U_est,
-            Ns,
-            biorbd_model,
-            q_ref,
-            dq_ref,
-            tau,
-            a_ref,
-            u_ref,
-            nbGT,
-            ratio=rt_ratio,
-            use_activation=conf["use_activation"],
-        )
+        err = compute_err(var["init_offset"],
+                          var["final_offset"],
+                          err_offset,
+                          X_est,
+                          U_est,
+                          Ns,
+                          biorbd_model,
+                          q_ref,
+                          dq_ref,
+                          tau,
+                          a_ref,
+                          u_ref,
+                          nbGT,
+                          ratio=rt_ratio,
+                          use_activation=conf["use_activation"],
+                          full_windows=conf["full_windows"])
+
         err_tries[int(tries), :] = [
-            Ns_mhe,
+            err_offset,
             rt_ratio,
             toc,
             toc / iter,
@@ -253,7 +282,7 @@ def run_mhe(model_path, ocp, var, conf, fold):
         ]
         print(err)
         if conf["plot"]:
-            plot_MHE_results(
+            plot_results(
                 biorbd_model,
                 X_est,
                 q_ref,
