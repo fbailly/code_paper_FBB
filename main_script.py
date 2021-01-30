@@ -117,14 +117,14 @@ len_sol_u = Ns if conf["full_windows"] else ceil(Ns / rt_ratio) - Ns_mhe
 # Set size of optimal states and controls
 if conf["use_activation"]:
     print("Using activation-driven formulation...")
-    var["X_est"] = np.zeros((biorbd_model.nbQ() * 2, ceil((Ns + 1) / rt_ratio) - Ns_mhe))
     var["X_est"] = np.zeros((biorbd_model.nbQ() * 2, len_sol_x))
+
 else:
     print("Using excitation-driven formulation...")
-    var["X_est"] = np.zeros((biorbd_model.nbQ() * 2 + biorbd_model.nbMuscles(), ceil((Ns + 1) / rt_ratio) - Ns_mhe))
-var["U_est"] = np.zeros((nbGT + biorbd_model.nbMuscleTotal(), ceil(Ns / rt_ratio) - Ns_mhe))
     var["X_est"] = np.zeros((biorbd_model.nbQ() * 2 + biorbd_model.nbMuscles(), len_sol_x))
 var["U_est"] = np.zeros((nbGT + biorbd_model.nbMuscleTotal(), len_sol_u))
+    
+
 
 # Set number of co-contraction level
 nb_co_lvl = var["nb_co_lvl"] if conf["use_co"] else 1
