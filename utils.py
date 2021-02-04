@@ -59,8 +59,8 @@ def force_func(biorbd_model, use_activation=False):
     ).expand()
 
 
-# Return RMSE when MHE problem
-def compute_err_mhe(
+# Return mean RMSE
+def compute_err(
     init_offset,
     final_offset,
     Ns_mhe,
@@ -76,6 +76,7 @@ def compute_err_mhe(
     nbGT,
     ratio=1,
     use_activation=False,
+    full_windows=False
 ):
     # All variables
     model = model
@@ -83,8 +84,6 @@ def compute_err_mhe(
     get_markers = markers_fun(model)
     err = dict()
     offset = final_offset - Ns_mhe
-    nbGT = nbGT
-    Ns = Ns
     q_ref = q[:, 0 : Ns + 1 : ratio]
     dq_ref = dq[:, 0 : Ns + 1 : ratio]
     tau_ref = tau[:, 0:Ns:ratio]
@@ -112,7 +111,9 @@ def compute_err_mhe(
     ).mean()
 
     # Get marker and compute RMSE
-    for i in range(ceil((Ns + 1) / ratio) - Ns_mhe):
+    len_x = int(ceil((Ns + 1) / ratio) - Ns_mhe) if full_windows is not True else Ns + 1
+    len_u = int(ceil(Ns / ratio) - Ns_mhe) if full_windows is not True else Ns
+    for i in range(len_x):
         sol_mark[:, :, i] = get_markers(X_est[: model.nbQ(), i])
     sol_mark_tmp = np.zeros((3, sol_mark_ref.shape[1], Ns + 1))
     for i in range(Ns + 1):
@@ -126,14 +127,14 @@ def compute_err_mhe(
 
     # Get muscle force and compute RMSE
     force_ref_tmp = np.ndarray((model.nbMuscles(), Ns))
-    force_est = np.ndarray((model.nbMuscles(), int(ceil(Ns / ratio) - Ns_mhe)))
+    force_est = np.ndarray((model.nbMuscles(), len_u))
     if use_activation:
         a_est = np.zeros((model.nbMuscles(), Ns))
     else:
         a_est = X_est[-model.nbMuscles() :, :]
 
     for i in range(model.nbMuscles()):
-        for j in range(int(ceil(Ns / ratio) - Ns_mhe)):
+        for j in range(len_u):
             force_est[i, j] = get_force(
                 X_est[: model.nbQ(), j], X_est[model.nbQ() : model.nbQ() * 2, j], a_est[:, j], U_est[nbGT:, j]
             )[i, :]
@@ -149,113 +150,21 @@ def compute_err_mhe(
     return err
 
 
-# Return RMSE when full windows problem
-def compute_err(
-    init_offset, final_offset, X_est, U_est, Ns, model, q, dq, tau, activations, excitations, nbGT, use_activation=False
-):
-    # All variables
-    model = model
-    get_markers = markers_fun(model)
-    err = dict()
-    nbGT = nbGT
-    Ns = Ns
-    q_ref = q[:, 0 : Ns + 1]
-    dq_ref = dq[:, 0 : Ns + 1]
-    tau_ref = tau[:, 0:Ns]
-    muscles_ref = excitations[:, 0:Ns]
-    if use_activation:
-        muscles_ref = activations[:, 0:Ns]
-    sol_mark = np.zeros((3, model.nbMarkers(), Ns + 1))
-    sol_mark_ref = np.zeros((3, model.nbMarkers(), Ns + 1))
-
-    # Compute RMSE
-    err["q"] = np.sqrt(
-        np.square(X_est[: model.nbQ(), init_offset:-final_offset] - q_ref[:, init_offset:-final_offset]).mean(axis=1)
-    ).mean()
-    err["q_dot"] = np.sqrt(
-        np.square(
-            X_est[model.nbQ() : model.nbQ() * 2, init_offset:-final_offset] - dq_ref[:, init_offset:-final_offset]
-        ).mean(axis=1)
-    ).mean()
-    err["tau"] = np.sqrt(
-        np.square(U_est[:nbGT, init_offset : -final_offset - 1] - tau_ref[:, init_offset:-final_offset]).mean(axis=1)
-    ).mean()
-    err["muscles"] = np.sqrt(
-        np.square(U_est[nbGT:, init_offset : -final_offset - 1] - muscles_ref[:, init_offset:-final_offset]).mean(
-            axis=1
-        )
-    ).mean()
-
-    # Get marker and compute RMSE
-    for i in range(Ns + 1):
-        sol_mark[:, :, i] = get_markers(X_est[: model.nbQ(), i])
-    sol_mark_tmp = np.zeros((3, sol_mark_ref.shape[1], Ns + 1))
-    for i in range(Ns + 1):
-        sol_mark_tmp[:, :, i] = get_markers(q[:, i])
-    sol_mark_ref = sol_mark_tmp[:, :, 0 : Ns + 1]
-    err["markers"] = np.sqrt(
-        np.square(sol_mark[:, :, init_offset:-final_offset] - sol_mark_ref[:, :, init_offset:-final_offset])
-        .sum(axis=0)
-        .mean(axis=1)
-    ).mean()
-    force_ref_tmp = np.ndarray((model.nbMuscles(), Ns))
-    force_est = np.ndarray((model.nbMuscles(), Ns))
-    if use_activation:
-        a_est = np.zeros((model.nbMuscles(), Ns))
-    else:
-        a_est = X_est[-model.nbMuscles() :, :]
-
-    # Get muscle force and compute RMSE
-    get_force = force_func(model, use_activation=use_activation)
-    for i in range(model.nbMuscles()):
-        for j in range(Ns):
-            force_est[i, j] = get_force(
-                X_est[: model.nbQ(), j], X_est[model.nbQ() : model.nbQ() * 2, j], a_est[:, j], U_est[nbGT:, j]
-            )[i, :]
-    get_force = force_func(model, use_activation=False)
-    for i in range(model.nbMuscles()):
-        for k in range(Ns):
-            force_ref_tmp[i, k] = get_force(q[:, k], dq[:, k], activations[:, k], excitations[:, k])[i, :]
-    force_ref = force_ref_tmp[:, 0:Ns]
-    err["force"] = np.sqrt(
-        np.square(force_est[:, init_offset:-final_offset] - force_ref[:, init_offset:-final_offset]).mean(axis=1)
-    ).mean()
-
-    return err
-
-
 # Return estimation on the first node of the ocp and inital guess for next optimisation
 def warm_start_mhe(ocp, sol, use_activation=False):
     # Define problem variable
-    data = Data.get_data(ocp, sol)
-    q = data[0]["q"]
-    dq = data[0]["qdot"]
-    w_tau = "tau" in data[1].keys()
-
-    # Store data
-    if use_activation:
-        act = data[1]["muscles"]
-        x = np.vstack([q, dq])
-        if w_tau:
-            u0 = np.vstack([tau, act])[:, 1:]
-            u = np.vstack([tau, act])
-        else:
-            u0 = act[:, 1:]
-            u = act
+    states, controls = Data.get_data(ocp, sol)
+    q, qdot = states["q"], states["qdot"]
+    u = controls["muscles"]
+    x = np.vstack([q, qdot]) if use_activation else np.vstack([q, qdot, states["muscles"]])
+    w_tau = "tau" in controls.keys()
+    if w_tau:
+        u = np.vstack([controls["tau"], u])
     else:
-        act = data[0]["muscles"]
-        exc = data[1]["muscles"]
-        x = np.vstack([q, dq, act])
-        if w_tau:
-            u0 = np.vstack([tau, act])[:, 1:]  # take activation as initial guess for next optimization
-            u = np.vstack([tau, exc])
-        else:
-            u0 = act[:, 1:]  # take activation as initial guess for next optimization
-            u = exc
-
+        u = u
     # Prepare data to return
     x0 = np.hstack((x[:, 1:], np.tile(x[:, [-1]], 1)))  # discard oldest estimate of the window, duplicates youngest
-    # u0 = u[:, :-1]
+    u0 = u[:, 1:]
     x_out = x[:, 0]
     u_out = u[:, 0]
     return x0, u0, x_out, u_out
@@ -349,17 +258,17 @@ def define_objective(
     biorbd_model,
     idx,
     TRACK_LESS_EMG=False,
+    full_windows=False
 ):
     objectives = ObjectiveList()
     idx = idx if TRACK_LESS_EMG else range(biorbd_model.nbMuscles())
     if TRACK_EMG:
-        if with_low_weight:
-            w_marker = 10000000
-            w_control = 1000000
-        else:
-            w_marker = 1000000000
-            w_control = 1000000
-        w_torque = 100000000
+        w_marker = 10000000 if with_low_weight else 1000000000
+        w_control = 1000000 if with_low_weight else 1000000
+        if full_windows:
+            w_marker = 1000000 if with_low_weight else 100000000
+            w_control = 10000 if with_low_weight else 100000
+        w_torque = 100000000 if full_windows else 100000000
         objectives.add(
             ObjectiveFcn.Lagrange.TRACK_MUSCLES_CONTROL,
             weight=w_control,
@@ -368,28 +277,31 @@ def define_objective(
         )
         if TRACK_LESS_EMG:
             objectives.add(ObjectiveFcn.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=10000)
-        if use_torque:
-            objectives.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=w_torque)
     else:
-        if with_low_weight:
-            w_marker = 1000000
+        if use_activation:
+            w_control = 100000 if full_windows else 100000
+            if full_windows:
+                w_marker = 1000000 if with_low_weight else 100000000
+            else:
+                w_marker = 10000000 if with_low_weight else 10000000
         else:
-            w_marker = 10000000
-        w_control = 10000
-        w_torque = 10000000
-        objectives.add(
-            ObjectiveFcn.Lagrange.MINIMIZE_MUSCLES_CONTROL,
-            weight=w_control,
-        )
-        if use_torque:
-            objectives.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=w_torque)
+            w_control = 100000 if full_windows else 1000000
+            if full_windows:
+                w_marker = 1000000 if with_low_weight else 1000000
+            else:
+                w_marker = 10000000 if with_low_weight else 100000000
 
+        w_torque = 100000000 if full_windows else 10000000
+        objectives.add(ObjectiveFcn.Lagrange.MINIMIZE_MUSCLES_CONTROL, weight=w_control)
+
+    if use_torque:
+        objectives.add(ObjectiveFcn.Lagrange.MINIMIZE_TORQUE, weight=w_torque)
     objectives.add(
         ObjectiveFcn.Lagrange.TRACK_MARKERS,
         weight=w_marker,
         target=markers_target[:, :, iter * rt_ratio : (Ns_mhe + 1 + iter) * rt_ratio : rt_ratio],
     )
-    objectives.add(ObjectiveFcn.Lagrange.MINIMIZE_STATE, weight=1, index=np.array(range(biorbd_model.nbQ())))
+    objectives.add(ObjectiveFcn.Lagrange.MINIMIZE_STATE, weight=10, index=np.array(range(biorbd_model.nbQ())))
     objectives.add(
         ObjectiveFcn.Lagrange.MINIMIZE_STATE,
         weight=10,
@@ -398,7 +310,7 @@ def define_objective(
     if use_activation is not True:
         objectives.add(
             ObjectiveFcn.Lagrange.MINIMIZE_STATE,
-            weight=1,
+            weight=10,
             index=np.array(range(biorbd_model.nbQ() * 2, biorbd_model.nbQ() * 2 + biorbd_model.nbMuscles())),
         )
     return objectives
@@ -421,7 +333,7 @@ def get_reference_movement(file, use_torque, nbGT, Ns):
     return np.concatenate((q_ref, dq_ref, a_ref)), u_ref
 
 
-def plot_MHE_results(
+def plot_results(
     biorbd_model,
     X_est,
     q_ref,

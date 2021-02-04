@@ -15,12 +15,13 @@ conf = {
     "save_status": False,
     "save_results": False,
     "WRITE_STATS": False,
-    "TRACK_EMG": True,
+    "TRACK_EMG": False,
     "plot": True,
     "use_noise": True,
     "use_co": False,
     "use_try": True,
     "with_low_weight": False,
+    "full_windows": False  # full windows was tested only for null co_lvl and noise_lvl and low_weigth = false.
 }
 use_N_elec = True if conf["use_activation"] else False
 
@@ -63,14 +64,14 @@ var = {
     "Ns_ref": 800,
 }  # Set the size of MHE windows
 
-Ns_mhe = var["Ns_mhe"]
+Ns_mhe = "Full" if conf["full_windows"] else var["Ns_mhe"]
 nbQ, nbMT = biorbd_model.nbQ(), biorbd_model.nbMuscles()
 Ns = var["Ns_ref"] - var["start_delay"]
 T = var["T_ref"] * Ns / var["Ns_ref"]
 nbGT = biorbd_model.nbGeneralizedTorque() if conf["use_torque"] else 0
-rt_ratio = set_ratio[Ns_mhe - 3]  # Get ratio from the setup
-T_mhe = T / (Ns / rt_ratio) * Ns_mhe  # Compute the new time of OCP
-var["T"], var["Ns"], var["rt_ratio"] = T, Ns, rt_ratio
+rt_ratio = set_ratio[Ns_mhe - 3] if conf["full_windows"] is not True else 1  # Get ratio from the setup
+T_mhe = 0 if conf["full_windows"] else T / (Ns / rt_ratio) * Ns_mhe   # Compute the new time of OCP
+var["T"], var["Ns"], var["rt_ratio"], var["Ns_mhe"] = T, Ns, rt_ratio, Ns_mhe
 
 # Get reference data
 nb_co_lvl = 4
@@ -111,25 +112,31 @@ X_ref, U_ref = X_ref[:, :, var["start_delay"] :], U_ref[:, :, var["start_delay"]
 marker_noise_lvl = var["marker_noise_lvl"] if conf["use_noise"] else [0]
 EMG_noise_lvl = var["EMG_noise_lvl"] if conf["use_noise"] else [0]
 
+len_sol_x = Ns + 1 if conf["full_windows"] else ceil((Ns + 1) / rt_ratio) - Ns_mhe
+len_sol_u = Ns if conf["full_windows"] else ceil(Ns / rt_ratio) - Ns_mhe
 # Set size of optimal states and controls
 if conf["use_activation"]:
     print("Using activation-driven formulation...")
-    var["X_est"] = np.zeros((biorbd_model.nbQ() * 2, ceil((Ns + 1) / rt_ratio) - Ns_mhe))
+    var["X_est"] = np.zeros((biorbd_model.nbQ() * 2, len_sol_x))
+
 else:
     print("Using excitation-driven formulation...")
-    var["X_est"] = np.zeros((biorbd_model.nbQ() * 2 + biorbd_model.nbMuscles(), ceil((Ns + 1) / rt_ratio) - Ns_mhe))
-var["U_est"] = np.zeros((nbGT + biorbd_model.nbMuscleTotal(), ceil(Ns / rt_ratio) - Ns_mhe))
+    var["X_est"] = np.zeros((biorbd_model.nbQ() * 2 + biorbd_model.nbMuscles(), len_sol_x))
+var["U_est"] = np.zeros((nbGT + biorbd_model.nbMuscleTotal(), len_sol_u))
+    
+
 
 # Set number of co-contraction level
 nb_co_lvl = var["nb_co_lvl"] if conf["use_co"] else 1
-
+T_ocp = T if conf["full_windows"] else T_mhe
+N_ocp = Ns if conf["full_windows"] else Ns_mhe
 # Build the graph
 ocp = prepare_ocp(
     biorbd_model=biorbd_model,
-    final_time=T_mhe,
+    final_time=T_ocp,
     x0=var["X_est"][:, 0],
     nbGT=nbGT,
-    number_shooting_points=Ns_mhe,
+    number_shooting_points=N_ocp,
     use_torque=conf["use_torque"],
     use_activation=conf["use_activation"],
     use_SX=True,
@@ -221,13 +228,9 @@ for co in range(0, nb_co_lvl):
                     "f_est": force_est,
                     "f_ref": force_ref,
                 }
-                if conf["TRACK_EMG"]:
-                    sio.savemat(
-                        f"{fold}track_mhe_w_EMG_excitation_driven_co_lvl{co}_noise_lvl_{marker_noise_lvl[marker_lvl]}_{EMG_noise_lvl[EMG_lvl]}.mat",
-                        dic,
-                    )
-                else:
-                    sio.savemat(
-                        f"{fold}track_mhe_wt_EMG_excitation_driven_co_lvl{co}_noise_lvl_{marker_noise_lvl[marker_lvl]}_{EMG_noise_lvl[EMG_lvl]}.mat",
-                        dic,
-                    )
+                mhe = "mhe" if conf["full_windows"] is not True else "full"
+                track = "track" if conf["TRACK_EMG"] is not True else "min"
+                sio.savemat(
+                    f"{fold}{mhe}_{track}_EMG_excitation_driven_co_lvl{co}_noise_lvl_{marker_noise_lvl[marker_lvl]}_{EMG_noise_lvl[EMG_lvl]}.mat",
+                    dic,
+                )
