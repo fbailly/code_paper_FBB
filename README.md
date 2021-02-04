@@ -12,10 +12,17 @@ To do so :
 ```
 "load_data": False,
 ```
-If you don't want to generate the full dataset (it would take several hours), you can adjust the following values of the ```var``` dictionnary :
+If you don't want to generate the full dataset (it would take several hours), you can :
+(1) adjust the following values of the "var" dictionnary :
 ```
     "nb_try": 30, # number of trials per condition
     "marker_noise_lvl": [0, 0.002, 0.005, 0.01],
     "EMG_noise_lvl": [0, 1, 1.5, 2],
     "nb_co_lvl": 4,
+```
+(2) adjust the following flags of the "conf" dictionnary (witch run an example without noise, without co-contractio and for one try) :
+```
+    "use_noise": False,
+    "use_co": False,
+    "use_try": False,
 ```
